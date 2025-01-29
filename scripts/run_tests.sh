@@ -1,0 +1,1 @@
+python -m unittest discover -s ./backtester/tests -p "*.py" -v
