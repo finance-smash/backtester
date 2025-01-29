@@ -2,7 +2,7 @@ import numpy.typing as npt
 import numpy as np
 
 from typing import Annotated, Literal
-from backtester.commons.type_commons import TBUY, TSell
+from backtester.commons.type_commons import TSide
 
 
 TOrderActionKeys = {
@@ -29,7 +29,7 @@ TOrderActionTuple = tuple[
     float | None, # stop_loss
     float | None, # take_profit
     float | None, # limit
-    TBUY | TSell, # side
+    TSide, # side
     int # user_id
 ]
 

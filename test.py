@@ -1,7 +1,7 @@
 import numpy as np
 import time
 import talib
-from numba import jit
+from numba import jit # type: ignore
 import random
 
 @jit

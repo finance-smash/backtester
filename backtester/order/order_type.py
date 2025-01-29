@@ -2,7 +2,7 @@ import numpy.typing as npt
 import numpy as np
 
 from typing import Annotated, Literal
-from backtester.commons.type_commons import TBUY, TSell
+from backtester.commons.type_commons import TSide
 
 
 TOrderKeys = {
@@ -29,7 +29,7 @@ TOrderTuple = tuple[
     float | None, # take_profit
     float | None, # limit
     float | None, # stop
-    TBUY | TSell, # side
+    TSide, # side
     int # user_id
 ]
 
@@ -40,3 +40,5 @@ TOrders = Annotated[
     TOrderTuple,
     Literal["N"]
 ]
+
+ORDER__SHAPE = (0, len(TOrderKeys))
