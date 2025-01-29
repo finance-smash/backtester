@@ -9,19 +9,21 @@ from backtester.order_action import TOrderActions, make_order_action_tuple
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
-    short_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=10)
-    long_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=50)
+    close = data[:, OHLCV__CLOSE]
+    short_ema = talib.SMA(close, timeperiod=10)
+    long_ema = talib.SMA(close, timeperiod=50)
 
     crossover = (short_ema > long_ema) & (np.roll(short_ema, 1) <= np.roll(long_ema, 1))
     crossunder = (short_ema < long_ema) & (np.roll(short_ema, 1) >= np.roll(long_ema, 1))
     signal = np.where(crossover, BUY_SIGNAL, NO_SIGNAL) + np.where(crossunder, SELL_SIGNAL, NO_SIGNAL)
     signal[0] = NO_SIGNAL
 
-    return np.array([signal])
+    return np.array([signal, close])
 
 
 def order_fn(indicators: np.ndarray, index: int, params: TStrategyParams) -> TOrderActions:
     signal = indicators[0]
+    close = indicators[1]
     signal_at_index = signal[index]
 
     if signal_at_index == BUY_SIGNAL:
@@ -30,7 +32,7 @@ def order_fn(indicators: np.ndarray, index: int, params: TStrategyParams) -> TOr
             absolute_size=1.,
             stop_loss=0.,
             take_profit=0.,
-            limit=0.,
+            limit=close[index] - 10,
             side=BUY_SIGNAL,
             user_id=0
         )], dtype=np.float64)
@@ -40,7 +42,7 @@ def order_fn(indicators: np.ndarray, index: int, params: TStrategyParams) -> TOr
             absolute_size=1.,
             stop_loss=0.,
             take_profit=0.,
-            limit=0.,
+            limit=close[index] + 10,
             side=SELL_SIGNAL,
             user_id=0
         )], dtype=np.float64)
@@ -54,12 +56,14 @@ MyStrategy = Strategy(
     order_fn=order_fn
 )
 
-class BasicPosition(unittest.TestCase):
+class LimitOrder(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
 
     backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+
+    print('------------------------------------------------------')
 
     start_time = time.time()
 
@@ -71,15 +75,20 @@ class BasicPosition(unittest.TestCase):
 
     print(result_info)
 
+    all_pls = result_info[3]
+    all_pls_sum = np.sum(all_pls)
+    print(len(all_pls), all_pls_sum)
+
     final_equity = result_info[2]
+    final_equity_rounded = round(final_equity, 2)
 
     print(f"Time taken: {time_taken} seconds")
-    print(f"Final equity: {final_equity}")
-    print(f"Final gain: {final_equity - begin_equity}")
+    print(f"Final equity: {final_equity_rounded}")
+    print(f"Final gain: {final_equity_rounded - begin_equity}")
 
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity, 9999999917.07)
-        self.assertLess(self.time_taken, 0.00035)
+        self.assertEqual(self.final_equity_rounded, 10000000328.34)
+        self.assertLess(self.time_taken, 0.0004)
 
 if __name__ == '__main__':
     unittest.main()
