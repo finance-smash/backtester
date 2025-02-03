@@ -2,7 +2,9 @@ import numpy.typing as npt
 import numpy as np
 
 from typing_extensions import Annotated, Literal
-from commons.type_commons import TBUY, TSell
+from commons.type_commons import TBuy, TSell
+
+
 
 TTradeKeys = {
     "entry_price": 0,
@@ -21,7 +23,7 @@ TRADE__PL_PERCENTAGE = TTradeKeys['pl_percentage']
 TTradeTuple = tuple[
     float, # entry_price
     float, # size
-    TBUY | TSell, # side
+    TBuy | TSell, # side
     float, # pl
     float, # pl_percentage
 ]

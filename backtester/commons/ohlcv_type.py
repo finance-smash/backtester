@@ -4,6 +4,7 @@ import numpy.typing as npt
 from typing import Annotated
 
 
+
 TOhlcvKeys = {
     'open': 0,
     'high': 1,

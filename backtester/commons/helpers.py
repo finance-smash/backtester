@@ -1,6 +1,7 @@
 import pandas as pd
 
 
+
 def get_ohlcv_data(domain, symbol, timeframe, data_dir = "/Users/dyodio/Documents/Projects/Finance-Smash/data"):
     data_path = f"{domain}/{symbol}/{timeframe}.csv"
     candles_csv_file_path = f"{data_dir}/{data_path}"
