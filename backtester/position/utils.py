@@ -1,8 +1,10 @@
-from numba import jit # type: ignore
+from numba import njit # type: ignore
 
 from backtester.commons import BUY, SELL, NO_SIDE, TSide
 
-@jit
+
+
+@njit
 def get_position_side(position_size: float) -> TSide:
     if position_size > 0:
         return BUY

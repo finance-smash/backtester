@@ -3,7 +3,7 @@ import talib
 import numpy as np
 import time
 
-from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__LIMIT
+from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__MARKET
 from backtester.order_action import TOrderActions, make_order_action_tuple 
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.order import TOrders
@@ -12,8 +12,8 @@ from backtester.order import TOrders
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
     close = data[:, OHLCV__CLOSE]
-    short_ema = talib.SMA(close, timeperiod=10)
-    long_ema = talib.SMA(close, timeperiod=50)
+    short_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=10)
+    long_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=50)
 
     crossover = (short_ema > long_ema) & (np.roll(short_ema, 1) <= np.roll(long_ema, 1))
     crossunder = (short_ema < long_ema) & (np.roll(short_ema, 1) >= np.roll(long_ema, 1))
@@ -33,16 +33,16 @@ def order_fn(
     signal = indicators[0]
     close = indicators[1]
     signal_at_index = signal[index]
+    close_at_index = close[index]
 
 
     if signal_at_index == BUY_SIGNAL:
         return np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=0.,
+            stop_loss=close_at_index - 100,
             take_profit=0.,
-            price=close[index] - 10,
-            order_type=ORDER_TYPE__LIMIT,
+            order_type=ORDER_TYPE__MARKET,
             side=BUY_SIGNAL,
             user_id=0
         )], dtype=np.float64)
@@ -50,10 +50,9 @@ def order_fn(
         return np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=0.,
+            stop_loss=close_at_index + 100,
             take_profit=0.,
-            price=close[index] + 10,
-            order_type=ORDER_TYPE__LIMIT,
+            order_type=ORDER_TYPE__MARKET,
             side=SELL_SIGNAL,
             user_id=0
         )], dtype=np.float64)
@@ -70,14 +69,12 @@ MyStrategy = Strategy(
 
 
 
-class LimitOrder(unittest.TestCase):
+class WithStopLoss(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
 
     backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
-
-    print('------------------------------------------------------')
 
     start_time = time.time()
 
@@ -89,22 +86,19 @@ class LimitOrder(unittest.TestCase):
 
     print(result_info)
 
-    all_pls = result_info[3]
-    all_pls_sum = np.sum(all_pls)
-    print(len(all_pls), all_pls_sum)
-
     final_equity = result_info[2]
+    all_pls = result_info[3]
+    print(all_pls)
     final_equity_rounded = round(final_equity, 2)
 
     print(f"Time taken: {time_taken} seconds")
     print(f"Final equity: {final_equity_rounded}")
-    print(f"Final gain: {final_equity_rounded - begin_equity}")
+    print(f"Final gain: {final_equity - begin_equity}")
 
 
 
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity_rounded, 10000000328.34)
-        # self.assertLess(self.time_taken, 0.0004)
+        self.assertEqual(self.final_equity_rounded, 9999999727.11)
 
 
 

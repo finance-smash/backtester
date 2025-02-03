@@ -2,25 +2,28 @@ import numpy.typing as npt
 import numpy as np
 
 from typing import Annotated, Literal
-from backtester.commons.type_commons import TSide
+from backtester.commons.type_commons import TSide, TOrderType, TOffset
+
 
 
 TOrderKeys = {
     'size': 0,
     'stop_loss': 1,
     'take_profit': 2,
-    'limit': 3,
-    'stop': 4,
+    'price': 3,
+    'order_type': 4,
     'side': 5,
-    'user_id': 6,
+    'offset': 6,
+    'user_id': 7,
 }
 
 ORDER__SIZE = TOrderKeys['size']
 ORDER__STOP_LOSS = TOrderKeys['stop_loss']
 ORDER__TAKE_PROFIT = TOrderKeys['take_profit']
-ORDER__LIMIT = TOrderKeys['limit']
-ORDER__STOP = TOrderKeys['stop']
+ORDER__PRICE = TOrderKeys['price']
+ORDER__ORDER_TYPE = TOrderKeys['order_type']
 ORDER__SIDE = TOrderKeys['side']
+ORDER__OFFSET = TOrderKeys['offset']
 ORDER__USER_ID = TOrderKeys['user_id']
 
 TOrderTuple = tuple[
@@ -28,8 +31,9 @@ TOrderTuple = tuple[
     float | None, # stop_loss
     float | None, # take_profit
     float | None, # limit
-    float | None, # stop
+    TOrderType, # order_type
     TSide, # side
+    TOffset, # offset
     int # user_id
 ]
 
