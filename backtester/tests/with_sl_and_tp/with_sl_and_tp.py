@@ -4,13 +4,14 @@ import numpy as np
 import time
 
 from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__MARKET
-from backtester.order import TOrders
 from backtester.order_action import TOrderActions, make_order_action_tuple 
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
+from backtester.order import TOrders
 
 
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
+    close = data[:, OHLCV__CLOSE]
     short_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=10)
     long_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=50)
 
@@ -19,26 +20,28 @@ def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
     signal = np.where(crossover, BUY_SIGNAL, NO_SIGNAL) + np.where(crossunder, SELL_SIGNAL, NO_SIGNAL)
     signal[0] = NO_SIGNAL
 
-    return np.array([signal])
+    return np.array([signal, close])
 
 
 
 def order_fn(
-        indicators: np.ndarray,
-        index: int,
-        params: TStrategyParams,
-        pending_orders: TOrders,
-    ) -> TOrderActions:
+    indicators: np.ndarray,
+    index: int,
+    params: TStrategyParams,
+    pending_orders: TOrders,
+) -> TOrderActions:
     signal = indicators[0]
+    close = indicators[1]
     signal_at_index = signal[index]
+    close_at_index = close[index]
 
 
     if signal_at_index == BUY_SIGNAL:
         return np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=0.,
-            take_profit=0.,
+            stop_loss=close_at_index - 100,
+            take_profit=close_at_index + 100,
             order_type=ORDER_TYPE__MARKET,
             side=BUY_SIGNAL,
             user_id=0
@@ -47,8 +50,8 @@ def order_fn(
         return np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=0.,
-            take_profit=0.,
+            stop_loss=close_at_index + 100,
+            take_profit=close_at_index - 100,
             order_type=ORDER_TYPE__MARKET,
             side=SELL_SIGNAL,
             user_id=0
@@ -66,7 +69,7 @@ MyStrategy = Strategy(
 
 
 
-class BasicPosition(unittest.TestCase):
+class WithSlAndTp(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
@@ -90,6 +93,7 @@ class BasicPosition(unittest.TestCase):
     end_time = time.time()
 
     time_taken = end_time - start_time
+
     final_equity = result_info[2]
     final_equity_rounded = round(final_equity, 2)
 
@@ -99,8 +103,7 @@ class BasicPosition(unittest.TestCase):
 
 
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity_rounded, 9999999917.07)
-        # self.assertLess(self.time_taken, 0.00035)
+        self.assertEqual(self.final_equity_rounded, 9999999656.61)
 
 
 

@@ -75,23 +75,25 @@ class LimitOrder(unittest.TestCase):
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
 
-    backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
-
-    print('------------------------------------------------------')
+    backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 0),
+        params=np.array([])
+    )
 
     start_time = time.time()
 
-    result_info = backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+    result_info = backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 0),
+        params=np.array([])
+    )
 
     end_time = time.time()
 
     time_taken = end_time - start_time
-
-    print(result_info)
-
-    all_pls = result_info[3]
-    all_pls_sum = np.sum(all_pls)
-    print(len(all_pls), all_pls_sum)
 
     final_equity = result_info[2]
     final_equity_rounded = round(final_equity, 2)
@@ -99,7 +101,6 @@ class LimitOrder(unittest.TestCase):
     print(f"Time taken: {time_taken} seconds")
     print(f"Final equity: {final_equity_rounded}")
     print(f"Final gain: {final_equity_rounded - begin_equity}")
-
 
 
     def test_result_is_expected(self):

@@ -184,8 +184,8 @@ def testing_replace_in_place():
     arr = np.empty((nb_of_els, 10), dtype=np.float64)
     arr.fill(np.nan)
     for i in range(0, nb_of_els):
-        next_nan_indice = np.argmax(np.isnan(arr[0]))
-        arr[next_nan_indice] = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)
+        next_nan_index = np.argmax(np.isnan(arr[0]))
+        arr[next_nan_index] = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)
         # arr[i] = np.array([1, 2, 3, 4, 5, 6, 7, 8, 9, 10], dtype=np.float64)
     return arr
 testing_replace_in_place()
@@ -202,9 +202,9 @@ testing_full_replace()
 
 
 @nb.njit
-def get_next_nan_indice(arr: np.ndarray):
-    nan_indices = np.where(np.isnan(arr[0]))[0]
-    return nan_indices[0]
+def get_next_nan_index(arr: np.ndarray):
+    nan_indexes = np.where(np.isnan(arr[0]))[0]
+    return nan_indexes[0]
 
 def main():
     start = time.perf_counter()

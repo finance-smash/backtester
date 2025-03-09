@@ -7,7 +7,7 @@ from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNA
 from backtester.order_action import TOrderActions, make_order_action_tuple 
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.order import TOrders
-
+from backtester.position import POSITION__PL
 
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
@@ -69,36 +69,46 @@ MyStrategy = Strategy(
 
 
 
-class WithStopLoss(unittest.TestCase):
+class WithSlAndTpLongTime(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
-    ohlcv = ohlcv[0:1500]
+    ohlcv = ohlcv[0:200000]
     begin_equity = 100_000_000_00
 
-    backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+    backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 0),
+        params=np.array([])
+    )
 
     start_time = time.time()
 
-    result_info = backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+    result_info = backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 1),
+        params=np.array([])
+    )
 
     end_time = time.time()
 
     time_taken = end_time - start_time
 
-    print(result_info)
-
     final_equity = result_info[2]
-    all_pls = result_info[3]
-    print(all_pls)
     final_equity_rounded = round(final_equity, 2)
+    position_triple = result_info[0]
+
+    pls_from_position_triple = np.nan_to_num(position_triple[:, POSITION__PL]).sum()
+    final_gain_with_last_pls = pls_from_position_triple + final_equity - begin_equity
+    final_gain_with_last_pls_rounded = round(final_gain_with_last_pls, 2)
 
     print(f"Time taken: {time_taken} seconds")
     print(f"Final equity: {final_equity_rounded}")
     print(f"Final gain: {final_equity - begin_equity}")
-
-
+    print("Final gain with last pls:", final_gain_with_last_pls_rounded)
 
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity_rounded, 9999999656.61)
+        self.assertEqual(self.final_gain_with_last_pls_rounded, -32695.74)
 
 
 

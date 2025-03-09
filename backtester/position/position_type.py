@@ -1,3 +1,7 @@
+from typing import Annotated, Literal
+import numpy.typing as npt
+import numpy as np
+
 TPositionKeys = {
     "size": 0,
     "avg_price": 1,
@@ -15,3 +19,19 @@ TPositionTuple = tuple[
 ]
 
 TPosition = TPositionTuple
+
+TPositionTriple = tuple[
+    TPosition, # classic position
+    TPosition, # hedging position long
+    TPosition, # hedging position short
+]
+
+TPositionArray = Annotated[
+    npt.NDArray[np.float64],
+    TPosition,
+]
+
+TPositionTripleArray = Annotated[
+    npt.NDArray[np.float64],
+    TPositionTriple,
+]
