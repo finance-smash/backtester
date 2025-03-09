@@ -69,26 +69,32 @@ MyStrategy = Strategy(
 
 
 
-class WithStopLoss(unittest.TestCase):
+class WithSl(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
 
-    backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+    backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 0),
+        params=np.array([])
+    )
 
     start_time = time.time()
 
-    result_info = backtest_strategy(MyStrategy, ohlcv, np.array([begin_equity]), np.array([]))
+    result_info = backtest_strategy(
+        strategy=MyStrategy,
+        data=ohlcv,
+        setup=(begin_equity, 0),
+        params=np.array([])
+    )
 
     end_time = time.time()
 
     time_taken = end_time - start_time
 
-    print(result_info)
-
     final_equity = result_info[2]
-    all_pls = result_info[3]
-    print(all_pls)
     final_equity_rounded = round(final_equity, 2)
 
     print(f"Time taken: {time_taken} seconds")
