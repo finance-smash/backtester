@@ -5,6 +5,7 @@ import time
 
 from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__MARKET
 from backtester.order_action import TOrderActions, make_order_action_tuple 
+from backtester.position import TPositionTripleArray
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.order import TOrders
 
@@ -29,7 +30,9 @@ def order_fn(
     index: int,
     params: TStrategyParams,
     pending_orders: TOrders,
-) -> TOrderActions:
+    position_triple: TPositionTripleArray,
+    state: np.ndarray
+) -> tuple[TOrderActions, np.ndarray]:
     signal = indicators[0]
     close = indicators[1]
     signal_at_index = signal[index]
@@ -37,7 +40,7 @@ def order_fn(
 
 
     if signal_at_index == BUY_SIGNAL:
-        return np.array([make_order_action_tuple(
+        return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index - 100,
@@ -45,9 +48,9 @@ def order_fn(
             order_type=ORDER_TYPE__MARKET,
             side=BUY_SIGNAL,
             user_id=0
-        )], dtype=np.float64)
+        )], dtype=np.float64), state)
     elif signal_at_index == SELL_SIGNAL:
-        return np.array([make_order_action_tuple(
+        return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index + 100,
@@ -55,9 +58,9 @@ def order_fn(
             order_type=ORDER_TYPE__MARKET,
             side=SELL_SIGNAL,
             user_id=0
-        )], dtype=np.float64)
+        )], dtype=np.float64), state)
     else:
-        return np.empty((0, 7), dtype=np.float64)
+        return (np.empty((0, 7), dtype=np.float64), state)
 
 
 
@@ -77,7 +80,7 @@ class WithSlAndTpHedging(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1),
+        setup=(begin_equity, 1, False),
         params=np.array([])
     )
 
@@ -86,7 +89,7 @@ class WithSlAndTpHedging(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1),
+        setup=(begin_equity, 1, False),
         params=np.array([])
     )
 

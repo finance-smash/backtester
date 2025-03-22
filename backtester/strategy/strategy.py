@@ -8,13 +8,22 @@ from backtester.order import TOrders
 from backtester.order_action import TOrderActions
 from backtester.commons import TOhlcv
 
+from backtester.position import TPositionTripleArray
+
 
 
 TStrategyParams = npt.NDArray[np.float64]
 
 TIndicatorsFn = Callable[[TOhlcv, TStrategyParams], np.ndarray]
 
-TOrderFn = Callable[[np.ndarray, int, TStrategyParams, TOrders], TOrderActions]
+TOrderFn = Callable[[
+    np.ndarray, # indicators
+    int, # index
+    TStrategyParams, # params
+    TOrders, # pending_orders
+    TPositionTripleArray, # position_triple
+    np.ndarray, # state
+], tuple[TOrderActions, np.ndarray]]
 
 TBacktestSetup = tuple[
     float, # cash

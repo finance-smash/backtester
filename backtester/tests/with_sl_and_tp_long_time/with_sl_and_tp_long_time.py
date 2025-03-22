@@ -7,7 +7,7 @@ from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNA
 from backtester.order_action import TOrderActions, make_order_action_tuple 
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.order import TOrders
-from backtester.position import POSITION__PL
+from backtester.position import POSITION__PL, TPositionTripleArray
 
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
@@ -29,7 +29,9 @@ def order_fn(
     index: int,
     params: TStrategyParams,
     pending_orders: TOrders,
-) -> TOrderActions:
+    position_triple: TPositionTripleArray,
+    state: np.ndarray
+) -> tuple[TOrderActions, np.ndarray]:
     signal = indicators[0]
     close = indicators[1]
     signal_at_index = signal[index]
@@ -37,7 +39,7 @@ def order_fn(
 
 
     if signal_at_index == BUY_SIGNAL:
-        return np.array([make_order_action_tuple(
+        return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index - 100,
@@ -45,9 +47,9 @@ def order_fn(
             order_type=ORDER_TYPE__MARKET,
             side=BUY_SIGNAL,
             user_id=0
-        )], dtype=np.float64)
+        )], dtype=np.float64), state)
     elif signal_at_index == SELL_SIGNAL:
-        return np.array([make_order_action_tuple(
+        return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index + 100,
@@ -55,9 +57,9 @@ def order_fn(
             order_type=ORDER_TYPE__MARKET,
             side=SELL_SIGNAL,
             user_id=0
-        )], dtype=np.float64)
+        )], dtype=np.float64), state)
     else:
-        return np.empty((0, 7), dtype=np.float64)
+        return (np.empty((0, 7), dtype=np.float64), state)
 
 
 
@@ -77,7 +79,7 @@ class WithSlAndTpLongTime(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0),
+        setup=(begin_equity, 0, False),
         params=np.array([])
     )
 
@@ -86,7 +88,7 @@ class WithSlAndTpLongTime(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1),
+        setup=(begin_equity, 1, False),
         params=np.array([])
     )
 
@@ -97,6 +99,14 @@ class WithSlAndTpLongTime(unittest.TestCase):
     final_equity = result_info[2]
     final_equity_rounded = round(final_equity, 2)
     position_triple = result_info[0]
+    all_pls = result_info[3]
+    all_positive_pls = all_pls[all_pls > 0]
+    positive_pls_rate = len(all_positive_pls) / len(all_pls)
+    avg_pl = all_pls.mean()
+    print(f"Positive pls rate: {positive_pls_rate * 100}%")
+    print(f"Avg pl: {avg_pl}")
+
+    np.savetxt('all_pls.csv', all_pls, delimiter=',')
 
     pls_from_position_triple = np.nan_to_num(position_triple[:, POSITION__PL]).sum()
     final_gain_with_last_pls = pls_from_position_triple + final_equity - begin_equity

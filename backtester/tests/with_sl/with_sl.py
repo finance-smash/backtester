@@ -5,9 +5,9 @@ import time
 
 from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__MARKET
 from backtester.order_action import TOrderActions, make_order_action_tuple 
-from backtester.position import TPositionTripleArray
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.order import TOrders
+from backtester.position import TPositionTripleArray
 
 
 
@@ -44,7 +44,7 @@ def order_fn(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index - 100,
-            take_profit=close_at_index + 100,
+            take_profit=0.,
             order_type=ORDER_TYPE__MARKET,
             side=BUY_SIGNAL,
             user_id=0
@@ -54,7 +54,7 @@ def order_fn(
             relative_size=0.,
             absolute_size=1.,
             stop_loss=close_at_index + 100,
-            take_profit=close_at_index - 100,
+            take_profit=0.,
             order_type=ORDER_TYPE__MARKET,
             side=SELL_SIGNAL,
             user_id=0
@@ -72,7 +72,7 @@ MyStrategy = Strategy(
 
 
 
-class WithSlAndTp(unittest.TestCase):
+class WithSl(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:1500]
     begin_equity = 100_000_000_00
@@ -105,8 +105,9 @@ class WithSlAndTp(unittest.TestCase):
     print(f"Final gain: {final_equity - begin_equity}")
 
 
+
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity_rounded, 9999999656.61)
+        self.assertEqual(self.final_equity_rounded, 9999999727.11)
 
 
 
