@@ -1,17 +1,18 @@
 import numpy as np
 import numpy.typing as npt
 
-from typing import Callable, Annotated, Literal
+from typing import Annotated, Literal
 from numba import njit # type: ignore
 
 from backtester.commons import BUY, SELL, NO_SIDE, TOhlcv, OHLCV__OPEN, OHLCV__CLOSE, OHLCV__LOW, OHLCV__HIGH, TSide, get_reverse_side, \
     MAX_NUMBER_OF_PENDING_ORDERS, MAX_NUMBER_OF_OCO_ORDERS, ORDER_TYPE__LIMIT, ORDER_TYPE__MARKET, ORDER_TYPE__STOP, OFFSET__CLOSE, \
     OFFSET__BOTH, TOffset, TBoolInt
-from backtester.order import TOrders, ORDER__SHAPE, ORDER__SIDE, ORDER__SIZE, ORDER__PRICE, ORDER__ORDER_TYPE, TOrderTuple, make_order_tuple, TOrderKeys, \
-    ORDER__STOP_LOSS, ORDER__TAKE_PROFIT, ORDER__OFFSET
+from backtester.order import TOrders, ORDER__SHAPE, ORDER__SIDE, ORDER__SIZE, ORDER__PRICE, ORDER__ORDER_TYPE,\
+    TOrderTuple, make_order_tuple, TOrderKeys, \
+    ORDER__STOP_LOSS, ORDER__TAKE_PROFIT, ORDER__OFFSET, ORDER__CANDLE_INDEX
 from backtester.order_action import ORDER_ACTION__ABSOLUTE_SIZE, ORDER_ACTION__SIDE, ORDER_ACTION__PRICE, ORDER_ACTION__ORDER_TYPE, \
     ORDER_ACTION__STOP_LOSS, ORDER_ACTION__TAKE_PROFIT, TOrderAction, make_order_action, ORDER_ACTION__OFFSET
-from backtester.position import POSITION__AVG_PRICE, POSITION__SIZE, get_position_side, TPositionTripleArray, TPositionArray, POSITION__PL
+from backtester.position import POSITION__AVG_PRICE, POSITION__SIZE, get_position_side, TPositionTripleArray, TPositionArray
 
 from .strategy import Strategy, TStrategyParams, TOrderFn
 
@@ -24,7 +25,7 @@ TPendingOrderWithOco = Annotated[
     npt.NDArray[np.float64],
     TOrderTuple,
     MAX_NUMBER_OF_OCO_ORDERS,
-]
+] # The ocos at the end of the order need to be contiguous : e.g : [...TOrderTuple, 0 (first oco), 1 (second oco), 2 (third oco), np.nan (no more ocos after this), np.nan, np.nan, ..., np.nan] (all ocos contiguous then all nan)
 
 TPendingOrderWithOcos = Annotated[
     TPendingOrderWithOco,
@@ -34,15 +35,30 @@ TPendingOrderWithOcos = Annotated[
 TBacktestSetupTuple = tuple[
     float, # cash
     TBoolInt, # is_hedged
+    bool, # auto_trigger_tp_sl
 ]
 
 TBacktestSetup = TBacktestSetupTuple
 
 
+@njit
+def make_backtest_setup_tuple(
+    begin_equity: float,
+    is_hedged: TBoolInt,
+    auto_trigger_tp_sl: bool
+) -> TBacktestSetupTuple:
+    return (begin_equity, is_hedged, auto_trigger_tp_sl)
 
-def backtest_strategy(strategy: Strategy, data: TOhlcv, setup: TBacktestSetup, params: TStrategyParams):
+
+def backtest_strategy(
+    strategy: Strategy,
+    data: TOhlcv,
+    setup: TBacktestSetup,
+    params: TStrategyParams,
+    state_shape: tuple[int] = (0,)
+):
     indicators = strategy.indicators_fn(data, params)
-    return backtest_strategy_loop(indicators, strategy.order_fn, data, setup, params)
+    return backtest_strategy_loop(indicators, strategy.order_fn, data, setup, params, state_shape)
 
 
 
@@ -52,11 +68,12 @@ def backtest_strategy_loop(
     order_fn: TOrderFn,
     data: TOhlcv,
     setup: TBacktestSetup,
-    params: TStrategyParams
+    params: TStrategyParams,
+    state_shape: tuple[int] = (0,)
 ) -> tuple[TPositionTripleArray, int, float, np.ndarray]:
     data_len = len(data)
     nb_of_orders = 0
-    (equity, is_hedged_boolint) = setup
+    (equity, is_hedged_boolint, auto_trigger_tp_sl) = setup
     is_hedged = is_hedged_boolint == 1
     position_triple = np.zeros((3, 3), dtype=np.float64)
 
@@ -73,7 +90,9 @@ def backtest_strategy_loop(
         dtype=np.float64
     )
     pending_orders.fill(np.nan)
-    all_pls = np.empty((0), dtype=np.float64)
+    all_pls = np.empty((0, 3), dtype=np.float64) #[[pl, pl_perc, pl_size]]
+    state = np.zeros(state_shape, dtype=np.float64)
+    state.fill(np.nan)
 
 
     for i in range(data_len - 1):
@@ -89,12 +108,13 @@ def backtest_strategy_loop(
             current_all_pls=all_pls,
             data=data,
             is_hedged=is_hedged,
+            auto_trigger_tp_sl=auto_trigger_tp_sl,
             i=i
         )
 
         current_close_price = data[i, OHLCV__CLOSE]
         incoming_open_price = data[i + 1, OHLCV__OPEN]
-        order_actions = order_fn(indicators, i, params, pending_orders)
+        (order_actions, state) = order_fn(indicators, i, params, pending_orders, position_triple, state)
         order_actions_len = len(order_actions)
 
 
@@ -125,9 +145,9 @@ def backtest_strategy_loop(
 
                 if order_action_order_type == ORDER_TYPE__LIMIT:
                     if side == BUY and order_action_price >= current_close_price:
-                        raise ValueError(f"Cannot place a buy limit order at {str(order_action_price)} because the last close price is {str(current_close_price)}")
+                        raise ValueError(f"Cannot place a buy limit order at", order_action_price, "because the last close price is", current_close_price)
                     elif side == SELL and order_action_price <= current_close_price:
-                        raise ValueError(f"Cannot place a sell limit order at {str(order_action_price)} because the last close price is {str(current_close_price)}")
+                        raise ValueError(f"Cannot place a sell limit order at", order_action_price, "because the last close price is", current_close_price, "index", i)
                     
 
                     (pending_orders, limit_order_index) = register_pending_order(
@@ -138,8 +158,10 @@ def backtest_strategy_loop(
                             side=side,
                             stop_loss=order_action_stop_loss,
                             take_profit=order_action_take_profit,
+                            offset=order_action_offset,
                         ),
                         pending_orders=pending_orders,
+                        candle_index=i
                     )
 
 
@@ -155,13 +177,14 @@ def backtest_strategy_loop(
                         print("Order take profit", order_action_take_profit)
                         print("Order size", size)
                         print("incoming open price", incoming_open_price)
+                    # TO DO: check if the tp/sl can be placed, e.g in case of a long if the tp is lower than the incoming open price, it cannot be placed
                     (pending_orders, _, _) = register_take_profit_stop_loss(
                         pending_orders=pending_orders,
                         side=side,
                         stop_loss=order_action_stop_loss,
                         take_profit=order_action_take_profit,
                         size=size,
-                        incoming_open_price=incoming_open_price,
+                        candle_index=i
                     )
 
                     (equity, position_triple, all_pls, pending_orders) = applicate_order(
@@ -203,9 +226,11 @@ def applicate_all_pending_orders(
     current_all_pls: np.ndarray,
     data: TOhlcv,
     is_hedged: bool,
+    auto_trigger_tp_sl: bool,
     i: int,
 ) -> tuple[float, TPositionTripleArray, np.ndarray, TOrders]:
     current_close_price = data[i, OHLCV__CLOSE]
+    incoming_open_price = data[i + 1, OHLCV__OPEN]
     first_pending_order_index = -1
 
 
@@ -224,9 +249,14 @@ def applicate_all_pending_orders(
     for pending_orders_index in range(first_pending_order_index, MAX_NUMBER_OF_PENDING_ORDERS):
         pending_order = pending_orders[pending_orders_index]
         pending_order_size = pending_order[ORDER__SIZE]
+        pending_order_candle_index = pending_order[ORDER__CANDLE_INDEX]
         
 
-        if np.isnan(pending_order_size) or pending_order_size == 0:
+        if (
+            pending_order_candle_index >= i or
+            np.isnan(pending_order_size) or 
+            pending_order_size == 0
+        ):
             continue
 
 
@@ -255,36 +285,80 @@ def applicate_all_pending_orders(
             pending_order_price = current_open_price
 
 
-        is_triggered = False        
+        is_triggered = is_order_triggered(
+            pending_order_type=pending_order_type,
+            pending_order_side=pending_order_side,
+            pending_order_price=pending_order_price,
+            current_high_price=current_high_price,
+            current_low_price=current_low_price,
+            is_price_between_last_close_and_open=is_price_between_last_close_and_open,
+        )
 
-
-        if pending_order_type == ORDER_TYPE__STOP:
-            is_triggered = (
-                (pending_order_side == BUY and (current_high_price >= pending_order_price or is_price_between_last_close_and_open)) or
-                (pending_order_side == SELL and (current_low_price <= pending_order_price or is_price_between_last_close_and_open))
-            )
-            if is_triggered and DEBUG:
-                print(f"Stop order triggered at index {i}", "pending order price", pending_order_price, "pending_orders_index", pending_orders_index)
-        elif pending_order_type == ORDER_TYPE__LIMIT:
-            is_triggered = (
-                current_low_price < pending_order_price < current_high_price or is_price_between_last_close_and_open
-            )
-            if is_triggered and DEBUG:
-                print(f"Limit order triggered at index {i}", "pending order price", pending_order_price, "pending_orders_index", pending_orders_index)
-        else:
-            raise ValueError(f"Pending order type not limit ({ORDER_TYPE__LIMIT}) nor stop ({ORDER_TYPE__STOP}), got : {pending_order_type}")
+        if is_triggered and DEBUG:
+            print(f"{'Limit' if pending_order_type == ORDER_TYPE__LIMIT else 'Stop'} order triggered at candle index {i}", "pending order price", pending_order_price, "pending_orders_index", pending_orders_index, "ori pending order price", pending_order[ORDER__PRICE])
         
 
         if is_triggered:
+            is_pending_tp_auto_triggered = False
+            is_pending_sl_auto_triggered = False
             if (pending_order_stop_loss or pending_order_take_profit):
-                (pending_orders, _, _) = register_take_profit_stop_loss(
-                    pending_orders=pending_orders,
-                    side=pending_order_side,
-                    stop_loss=pending_order_stop_loss,
-                    take_profit=pending_order_take_profit,
-                    size=pending_order_size,
-                    incoming_open_price=pending_order_price,
-                )
+                reverse_side = get_reverse_side(pending_order_side)
+                if pending_order_take_profit and auto_trigger_tp_sl:
+                    candle_is_same_side_buy = (pending_order_side == BUY and current_open_price < current_close_price)
+                    candle_is_same_side_sell = (pending_order_side == SELL and current_open_price > current_close_price)
+                    is_pending_tp_auto_triggered_after_open_at_open = is_price_between_last_close_and_open and is_order_triggered(
+                        pending_order_type=ORDER_TYPE__LIMIT,
+                        pending_order_side=reverse_side,
+                        pending_order_price=pending_order_take_profit,
+                        current_high_price=current_high_price,
+                        current_low_price=current_low_price,
+                        is_price_between_last_close_and_open=False,
+                    )
+                    is_pending_tp_auto_triggered_side_buy = candle_is_same_side_buy and is_order_triggered(
+                        pending_order_type=ORDER_TYPE__LIMIT,
+                        pending_order_side=reverse_side,
+                        pending_order_price=pending_order_take_profit,
+                        current_high_price=current_close_price,
+                        current_low_price=current_low_price,
+                        is_price_between_last_close_and_open=False,
+                    )
+                    is_pending_tp_auto_triggered_side_sell = candle_is_same_side_sell and is_order_triggered(
+                        pending_order_type=ORDER_TYPE__LIMIT,
+                        pending_order_side=reverse_side,
+                        pending_order_price=pending_order_take_profit,
+                        current_high_price=current_high_price,
+                        current_low_price=current_close_price,
+                        is_price_between_last_close_and_open=False,
+                    )
+                    is_pending_tp_auto_triggered = (
+                        is_pending_tp_auto_triggered_after_open_at_open or
+                        is_pending_tp_auto_triggered_side_buy or
+                        is_pending_tp_auto_triggered_side_sell
+                    )
+                
+                if pending_order_stop_loss and auto_trigger_tp_sl:
+                    final_sl_price = min(pending_order_stop_loss, pending_order_price) if pending_order_side == BUY else max(pending_order_stop_loss, pending_order_price)
+                    if final_sl_price != pending_order_stop_loss:
+                        print("Warning: Stop loss price has been modified to", final_sl_price, "from", pending_order_stop_loss, "this can happen if there is a big jump in candles")
+                        pending_order_stop_loss = final_sl_price
+                    is_pending_sl_auto_triggered = is_order_triggered(
+                        pending_order_type=ORDER_TYPE__STOP,
+                        pending_order_side=reverse_side,
+                        pending_order_price=pending_order_stop_loss,
+                        current_high_price=current_high_price,
+                        current_low_price=current_low_price,
+                        is_price_between_last_close_and_open=False,
+                    )
+
+                if (not is_pending_tp_auto_triggered) and (not is_pending_sl_auto_triggered):
+                    (pending_orders, _, _) = register_take_profit_stop_loss(
+                        pending_orders=pending_orders,
+                        side=pending_order_side,
+                        stop_loss=pending_order_stop_loss,
+                        take_profit=pending_order_take_profit,
+                        size=pending_order_size,
+                        candle_index=i
+                    )
 
 
             pending_orders = cancel_pending_order_at_index(pending_orders, pending_orders_index)
@@ -302,6 +376,40 @@ def applicate_all_pending_orders(
                 is_hedged=is_hedged,
                 i=i,
             )
+
+            if is_pending_sl_auto_triggered:
+                if DEBUG:
+                    print(f"Stop loss order auto triggered at candle index {i}", "pending_order_stop_loss_price", pending_order_stop_loss, "pending_orders_index", pending_orders_index)
+                (current_equity, current_position_triple, current_all_pls, pending_orders) = applicate_order(
+                    side=reverse_side,
+                    size=pending_order_size,
+                    price=pending_order_stop_loss,
+                    position_triple=current_position_triple,
+                    current_close_price=current_close_price,
+                    current_equity=current_equity,
+                    all_pls=current_all_pls,
+                    pending_orders=pending_orders,
+                    offset=OFFSET__CLOSE,
+                    is_hedged=is_hedged,
+                    i=i,
+                )
+
+            elif is_pending_tp_auto_triggered:
+                if DEBUG:
+                    print(f"Take profit order auto triggered at candle index {i}", "pending_order_take_profit_price", pending_order_take_profit, "pending_orders_index", pending_orders_index)
+                (current_equity, current_position_triple, current_all_pls, pending_orders) = applicate_order(
+                    side=reverse_side,
+                    size=pending_order_size,
+                    price=pending_order_take_profit,
+                    position_triple=current_position_triple,
+                    current_close_price=current_close_price,
+                    current_equity=current_equity,
+                    all_pls=current_all_pls,
+                    pending_orders=pending_orders,
+                    offset=OFFSET__CLOSE,
+                    is_hedged=is_hedged,
+                    i=i,
+                )
     
 
     return (current_equity, current_position_triple, current_all_pls, pending_orders)
@@ -418,7 +526,8 @@ def applicate_order(
             print("--------------------------------")
 
 
-        all_pls = np.append(all_pls, final_pos_pl)
+        pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * np.sign(current_position_size)
+        all_pls = np.vstack((all_pls, np.array([[final_pos_pl, pl_perc, current_position_size]], dtype=np.float64)))
         next_position = np.array([0., 0., 0.], dtype=np.float64)
     else:
         if position_changed_side:
@@ -441,6 +550,7 @@ def applicate_order(
                 current_position_side_sign = -1 if current_position_side == SELL else 1 if current_position_side == BUY else 0
                 reduced_size = np.abs(next_pos_size - current_position_size)
                 reduced_size_pl = (price - current_position_avg_price) * reduced_size * current_position_side_sign
+                reduced_size_pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * current_position_side_sign
                 equity += reduced_size_pl
                 if DEBUG:
                     print("--------------------------------")
@@ -452,7 +562,7 @@ def applicate_order(
                     print("next_pos_size", next_pos_size)
                     print("current_position_size", current_position_size)
                     print("--------------------------------")
-                all_pls = np.append(all_pls, reduced_size_pl)
+                all_pls = np.vstack((all_pls, np.array([[reduced_size_pl, reduced_size_pl_perc, reduced_size]], dtype=np.float64)))
 
 
         next_pos_pl = (current_close_price - next_pos_avg_price) * next_pos_size
@@ -477,9 +587,11 @@ def handle_position_side_change(
 ) -> tuple[float, float, np.ndarray]:
     if current_position_side != NO_SIDE and next_pos_side != NO_SIDE:
         size_to_close = np.abs(next_pos_size - current_position_size)
+        pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * np.sign(size_to_close)
         to_close_pl_with_next_open = (price - current_position_avg_price) * size_to_close
         equity += to_close_pl_with_next_open
-        all_pls = np.append(all_pls, to_close_pl_with_next_open)
+        new_pl = np.array([[to_close_pl_with_next_open, pl_perc, size_to_close]], dtype=np.float64)
+        all_pls = np.vstack((all_pls, new_pl))
     
     return (price, equity, all_pls)
 
@@ -492,7 +604,7 @@ def register_take_profit_stop_loss(
     stop_loss: float,
     take_profit: float,
     size: float,
-    incoming_open_price: float,
+    candle_index: int = 0
 ) -> tuple[TPendingOrderWithOcos, float, float]:
     stop_loss_price = stop_loss
     take_profit_price = take_profit
@@ -513,6 +625,7 @@ def register_take_profit_stop_loss(
                 offset=OFFSET__CLOSE
             ),
             pending_orders=pending_orders,
+            candle_index=candle_index
         )
 
 
@@ -525,14 +638,6 @@ def register_take_profit_stop_loss(
 
 
     if take_profit_price:
-        if side == BUY and take_profit_price < incoming_open_price:
-            print(f"Cannot place a buy take profit order at {str(take_profit_price)} because the incoming open price is {str(incoming_open_price)}")
-            return (pending_orders, np.nan, np.nan)
-        elif side == SELL and take_profit_price > incoming_open_price:
-            print(f"Cannot place a sell take profit order at {str(take_profit_price)} because the incoming open price is {str(incoming_open_price)}")
-            return (pending_orders, np.nan, np.nan)
-
-
         (pending_orders, take_profit_order_index) = register_pending_order(
             order_action=make_order_action(
                 absolute_size=size,
@@ -541,9 +646,11 @@ def register_take_profit_stop_loss(
                 side=reverse_side,
                 stop_loss=0,
                 take_profit=0,
-                offset=OFFSET__CLOSE
+                offset=OFFSET__CLOSE,
             ),
             pending_orders=pending_orders,
+            from_end=True,
+            candle_index=candle_index
         )
 
 
@@ -576,6 +683,8 @@ def register_take_profit_stop_loss(
 def register_pending_order(
     order_action: TOrderAction,
     pending_orders: TPendingOrderWithOcos,
+    from_end: bool = False,
+    candle_index: int = 0
 ) -> tuple[TPendingOrderWithOcos, int | float]:
     order_action_price = order_action[ORDER_ACTION__PRICE]
     order_type = order_action[ORDER_ACTION__ORDER_TYPE]
@@ -598,7 +707,7 @@ def register_pending_order(
 
     side = order_action[ORDER_ACTION__SIDE]
 
-    next_nan_index = get_next_pending_order_free_index(pending_orders)
+    next_nan_index = get_next_pending_order_free_index(pending_orders, from_end)
 
     pending_order_index = next_nan_index
 
@@ -610,12 +719,16 @@ def register_pending_order(
         order_type=order_type,
         side=side,
         offset=order_action[ORDER_ACTION__OFFSET],
+        candle_index=candle_index,
         user_id=0, # no user id for now
     )
 
     full_order = np.full(ORDER__SHAPE[1] + MAX_NUMBER_OF_OCO_ORDERS, np.nan, dtype=np.float64)
     full_order[:len(pending_order_tuple)] = np.array(pending_order_tuple, dtype=np.float64)
     pending_orders[pending_order_index] = full_order
+
+    if DEBUG:
+        print("order registered at pending_order_index", pending_order_index, "order_type", order_type, "size", size, "price", order_action_price, "side", side, "offset", order_action[ORDER_ACTION__OFFSET])
 
     return (pending_orders, pending_order_index)
 
@@ -628,11 +741,10 @@ def add_oco_order_index(
     oco_order_index: int
 ) -> TPendingOrderWithOcos:
     pending_order = pending_orders[pending_order_index]
-    base_order_len = BASE_ORDER_LEN
-    
-    
+
+
     for i in range(MAX_NUMBER_OF_OCO_ORDERS):
-        oco_to_append_index = base_order_len + i
+        oco_to_append_index = BASE_ORDER_LEN + i
         if np.isnan(pending_order[oco_to_append_index]):
             pending_order[oco_to_append_index] = float(oco_order_index)
             pending_orders[pending_order_index] = pending_order
@@ -650,8 +762,9 @@ def get_pending_order_ocos(pending_order_with_oco: TPendingOrderWithOco):
 
 
 @njit
-def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos):
-    next_nan_index = np.argmax(np.isnan(pending_orders[:,0]))
+def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos, from_end: bool = False):
+    pending_orders_isnans = np.isnan(pending_orders[:,0])
+    next_nan_index = np.argmax(pending_orders_isnans) if not from_end else (MAX_NUMBER_OF_PENDING_ORDERS - 1 - np.argmax(pending_orders_isnans[::-1]))
 
 
     if next_nan_index == 0 and not np.isnan(pending_orders[0, ORDER__SIZE]):
@@ -666,6 +779,8 @@ def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos):
 def cancel_pending_order_at_index(pending_orders: TPendingOrderWithOcos, pending_order_index: int):
     if np.isnan(pending_order_index):
         return pending_orders
+    if DEBUG:
+        print(f"Cancelling pending order at index {pending_order_index}")
     pending_order = pending_orders[pending_order_index]
     pending_order_ocos = get_pending_order_ocos(pending_order).copy()
     pending_order.fill(np.nan)
@@ -712,3 +827,29 @@ def is_between(lim1: float, x: float, lim2: float, strict: bool = True) -> bool:
         return is_between_strict(lim1, x, lim2)
     else:
         return is_between_inclusive(lim1, x, lim2)
+    
+
+@njit
+def is_order_triggered(
+    pending_order_type: int,
+    pending_order_side: int,
+    pending_order_price: float,
+    current_high_price: float,
+    current_low_price: float,
+    is_price_between_last_close_and_open: bool,
+) -> bool:
+    is_triggered = False
+
+    if pending_order_type == ORDER_TYPE__STOP:
+        is_triggered = (
+            (pending_order_side == BUY and (current_high_price >= pending_order_price or is_price_between_last_close_and_open)) or
+            (pending_order_side == SELL and (current_low_price <= pending_order_price or is_price_between_last_close_and_open))
+        )
+    elif pending_order_type == ORDER_TYPE__LIMIT:
+        is_triggered = (
+            current_low_price < pending_order_price < current_high_price or is_price_between_last_close_and_open
+        )
+    else:
+        raise ValueError(f"Pending order type not limit ({ORDER_TYPE__LIMIT}) nor stop ({ORDER_TYPE__STOP}), got : {pending_order_type}")
+    
+    return is_triggered

@@ -3,12 +3,11 @@ import talib
 import numpy as np
 import time
 
-from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__MARKET
+from backtester.commons import get_ohlcv_data, BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE, TOhlcv, ORDER_TYPE__LIMIT
 from backtester.order_action import TOrderActions, make_order_action_tuple 
-from backtester.position import TPositionTripleArray
-from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
-from backtester.order import TOrders
-
+from backtester.strategy import Strategy, TStrategyParams, backtest_strategy, cancel_pending_order_at_index
+from backtester.order import TOrders, ORDER__SIDE, ORDER__SIZE
+from backtester.position import POSITION__PL, TPositionTripleArray
 
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
@@ -39,13 +38,43 @@ def order_fn(
     close_at_index = close[index]
 
 
+    is_there_a_pending_order = False
+    for i in range(len(pending_orders)):
+        pending_order = pending_orders[i]
+        order_size = pending_order[ORDER__SIZE]
+        if not np.isnan(order_size):
+            is_there_a_pending_order = True
+            break
+
+
+    if is_there_a_pending_order:
+        for i in range(len(pending_orders)):
+            pending_order = pending_orders[i]
+            order_size = pending_order[ORDER__SIZE]
+
+            if not np.isnan(order_size):
+                order_side = pending_order[ORDER__SIDE]
+
+                if order_side == BUY_SIGNAL:
+                    cancel_pending_order_at_index(
+                        pending_orders=pending_orders,
+                        pending_order_index=i
+                    )
+                elif order_side == SELL_SIGNAL:
+                    cancel_pending_order_at_index(
+                        pending_orders=pending_orders,
+                        pending_order_index=i
+                    )
+
+
     if signal_at_index == BUY_SIGNAL:
         return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=close_at_index - 100,
-            take_profit=close_at_index + 100,
-            order_type=ORDER_TYPE__MARKET,
+            # stop_loss=close_at_index - 100,
+            # take_profit=close_at_index + 100,
+            price=close_at_index - 1000,
+            order_type=ORDER_TYPE__LIMIT,
             side=BUY_SIGNAL,
             user_id=0
         )], dtype=np.float64), state)
@@ -53,9 +82,10 @@ def order_fn(
         return (np.array([make_order_action_tuple(
             relative_size=0.,
             absolute_size=1.,
-            stop_loss=close_at_index + 100,
-            take_profit=close_at_index - 100,
-            order_type=ORDER_TYPE__MARKET,
+            # stop_loss=close_at_index + 100,
+            # take_profit=close_at_index - 100,
+            price=close_at_index + 1000,
+            order_type=ORDER_TYPE__LIMIT,
             side=SELL_SIGNAL,
             user_id=0
         )], dtype=np.float64), state)
@@ -72,9 +102,9 @@ MyStrategy = Strategy(
 
 
 
-class WithSlAndTp(unittest.TestCase):
+class WithCancellation(unittest.TestCase):
     ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
-    ohlcv = ohlcv[0:1500]
+    ohlcv = ohlcv[0:200000]
     begin_equity = 100_000_000_00
 
     backtest_strategy(
@@ -89,7 +119,7 @@ class WithSlAndTp(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0, False),
+        setup=(begin_equity, 1, False),
         params=np.array([])
     )
 
@@ -99,14 +129,19 @@ class WithSlAndTp(unittest.TestCase):
 
     final_equity = result_info[2]
     final_equity_rounded = round(final_equity, 2)
+    position_triple = result_info[0]
+
+    pls_from_position_triple = np.nan_to_num(position_triple[:, POSITION__PL]).sum()
+    final_gain_with_last_pls = pls_from_position_triple + final_equity - begin_equity
+    final_gain_with_last_pls_rounded = round(final_gain_with_last_pls, 2)
 
     print(f"Time taken: {time_taken} seconds")
     print(f"Final equity: {final_equity_rounded}")
     print(f"Final gain: {final_equity - begin_equity}")
-
+    print("Final gain with last pls:", final_gain_with_last_pls_rounded)
 
     def test_result_is_expected(self):
-        self.assertEqual(self.final_equity_rounded, 9999999656.61)
+        self.assertEqual(self.final_gain_with_last_pls_rounded, -39392.94)
 
 
 

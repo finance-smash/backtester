@@ -14,7 +14,8 @@ TOrderKeys = {
     'order_type': 4,
     'side': 5,
     'offset': 6,
-    'user_id': 7,
+    'candle_index': 7,
+    'user_id': 8,
 }
 
 ORDER__SIZE = TOrderKeys['size']
@@ -24,6 +25,7 @@ ORDER__PRICE = TOrderKeys['price']
 ORDER__ORDER_TYPE = TOrderKeys['order_type']
 ORDER__SIDE = TOrderKeys['side']
 ORDER__OFFSET = TOrderKeys['offset']
+ORDER__CANDLE_INDEX = TOrderKeys['candle_index']
 ORDER__USER_ID = TOrderKeys['user_id']
 
 TOrderTuple = tuple[
@@ -34,7 +36,8 @@ TOrderTuple = tuple[
     TOrderType, # order_type
     TSide, # side
     TOffset, # offset
-    int # user_id
+    int, # candle_index
+    int, # user_id
 ]
 
 TOrder = Annotated[npt.NDArray[np.float64], TOrderTuple]

@@ -14,6 +14,7 @@ def make_order_tuple(
     order_type: TOrderType = ORDER_TYPE__MARKET,
     side: TSide = 0,
     offset: TOffset = OFFSET__BOTH,
+    candle_index: int = 0,
     user_id: int = 0,
 ) -> TOrderTuple:
     return (
@@ -24,5 +25,6 @@ def make_order_tuple(
         order_type,
         side,
         offset,
+        candle_index,
         user_id,
     )
