@@ -2,7 +2,7 @@ import numpy.typing as npt
 import numpy as np
 
 from typing_extensions import Annotated, Literal
-from commons.type_commons import TBuy, TSell
+from backtester.commons.type_commons import TBuy, TSell
 
 
 

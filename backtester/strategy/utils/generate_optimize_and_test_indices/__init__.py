@@ -1,0 +1,3 @@
+from .generate_optimize_and_test_indices import generate_optimize_and_test_indices
+
+__all__ = ['generate_optimize_and_test_indices']
