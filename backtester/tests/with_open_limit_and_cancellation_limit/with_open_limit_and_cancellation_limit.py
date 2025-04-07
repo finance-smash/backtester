@@ -14,34 +14,36 @@ from backtester.position import POSITION__PL, TPositionTripleArray, POSITION__SI
 
 DEBUG = False
 
+CLOSE = 0
+LONG_MA = 1
+SHORT_MA = 2
+BOLL_BANDS_UPPER = 3
+BOLL_BANDS_LOWER = 4
+PRICE_ABOVE_LONG_MA = 5
+PRICE_BELOW_LONG_MA = 6
+
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
-    open = data[:, OHLCV__OPEN]
-    high = data[:, OHLCV__HIGH]
-    low = data[:, OHLCV__LOW]
     close = data[:, OHLCV__CLOSE]
     short_ma = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=20)
     long_ma = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=200)
     short_bollinger_bands = talib.BBANDS(data[:, OHLCV__CLOSE], timeperiod=20, nbdevup=2, nbdevdn=2, matype=talib.MA_Type.SMA)
     short_bollinger_bands_upper = short_bollinger_bands[0]
-    short_bollinger_bands_middle = short_bollinger_bands[1]
     short_bollinger_bands_lower = short_bollinger_bands[2]
 
     price_above_long_ma = data[:, OHLCV__CLOSE] > long_ma
     price_below_long_ma = data[:, OHLCV__CLOSE] < long_ma
 
-    return np.array([
-        short_ma,
-        long_ma,
-        short_bollinger_bands_upper,
-        short_bollinger_bands_middle,
-        short_bollinger_bands_lower,
-        price_above_long_ma,
-        price_below_long_ma,
-        close,
-        open,
-        high,
-        low
-    ])
+    ret = np.zeros((7, len(close)))
+
+    ret[CLOSE] = close
+    ret[LONG_MA] = long_ma
+    ret[SHORT_MA] = short_ma
+    ret[BOLL_BANDS_UPPER] = short_bollinger_bands_upper
+    ret[BOLL_BANDS_LOWER] = short_bollinger_bands_lower
+    ret[PRICE_ABOVE_LONG_MA] = price_above_long_ma
+    ret[PRICE_BELOW_LONG_MA] = price_below_long_ma
+
+    return ret
 
 
 
@@ -53,12 +55,12 @@ def order_fn(
     position_triple: TPositionTripleArray,
     state: np.ndarray
 ) -> tuple[TOrderActions, np.ndarray]:
-    short_ma = indicators[0]
-    short_bollinger_bands_upper = indicators[2]
-    short_bollinger_bands_lower = indicators[4]
-    price_above_long_ma = indicators[5]
-    price_below_long_ma = indicators[6]
-    close = indicators[7]
+    short_ma = indicators[SHORT_MA]
+    short_bollinger_bands_upper = indicators[BOLL_BANDS_UPPER]
+    short_bollinger_bands_lower = indicators[BOLL_BANDS_LOWER]
+    price_above_long_ma = indicators[PRICE_ABOVE_LONG_MA]
+    price_below_long_ma = indicators[PRICE_BELOW_LONG_MA]
+    close = indicators[CLOSE]
 
 
     short_ma_at_index = short_ma[index]

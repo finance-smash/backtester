@@ -8,7 +8,10 @@ from backtester.order import TOrders
 from backtester.order_action import TOrderActions, make_order_action_tuple 
 from backtester.strategy import Strategy, TStrategyParams, backtest_strategy
 from backtester.position import TPositionTripleArray
+from backtester.bt_result_plugin import with_fees
 
+COMMISSION_RATE = 0.00018
+with_fees_plugin = with_fees(COMMISSION_RATE)
 
 def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
     short_ema = talib.SMA(data[:, OHLCV__CLOSE], timeperiod=10)
@@ -91,19 +94,35 @@ class BasicPosition(unittest.TestCase):
 
     end_time = time.time()
 
+    all_pls_with_fees_res = with_fees_plugin(result_info)
+    print(all_pls_with_fees_res)
+    all_pls_with_fees = all_pls_with_fees_res[:, 0]
+    all_pls_with_fees_sum = round(np.sum(all_pls_with_fees), 3)
+
+    all_pls = result_info[3]
+    all_pls_pl = all_pls[:, 0]
+    all_pls_sum = round(np.sum(all_pls_pl), 3)
+
+    fees = np.abs(round(all_pls_with_fees_sum - all_pls_sum, 3))
+
     time_taken = end_time - start_time
     final_equity = result_info[2]
     final_equity_rounded = round(final_equity, 2)
+    final_equity_with_fees = round(final_equity - fees, 2)
 
     print(f"Time taken: {time_taken} seconds")
     print(f"Final equity: {final_equity_rounded}")
+    print(f"Final equity with fees: {final_equity_with_fees}")
     print(f"Final gain: {final_equity - begin_equity}")
+    print(f"Final gain with fees: {final_equity_with_fees - begin_equity}")
 
 
     def test_result_is_expected(self):
         self.assertEqual(self.final_equity_rounded, 9999999917.07)
-        # self.assertLess(self.time_taken, 0.00035)
-
+        self.assertEqual(self.final_equity_with_fees, 9999999885.8)
+        self.assertEqual(self.all_pls_with_fees_sum, -114.205)
+        self.assertEqual(self.all_pls_sum, -82.93)
+        self.assertEqual(self.fees, 31.275)
 
 
 if __name__ == '__main__':

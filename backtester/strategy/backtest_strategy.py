@@ -14,7 +14,7 @@ from backtester.order_action import ORDER_ACTION__ABSOLUTE_SIZE, ORDER_ACTION__S
     ORDER_ACTION__STOP_LOSS, ORDER_ACTION__TAKE_PROFIT, TOrderAction, make_order_action, ORDER_ACTION__OFFSET
 from backtester.position import POSITION__AVG_PRICE, POSITION__SIZE, get_position_side, TPositionTripleArray, TPositionArray
 
-from .strategy import Strategy, TStrategyParams, TOrderFn
+from backtester.strategy.strategy import Strategy, TStrategyParams, TOrderFn
 
 
 
@@ -40,14 +40,26 @@ TBacktestSetupTuple = tuple[
 
 TBacktestSetup = TBacktestSetupTuple
 
+TBacktestResultTuple = tuple[
+    TPositionTripleArray, # last position triple
+    int, # number of orders
+    float, # final equity
+    np.ndarray, # all pls as an array of (pl, pl_perc, pl_size, pl_close_price, pl_avg_price),
+    np.ndarray # state
+]
+
+TBacktestResult = TBacktestResultTuple
+
+
 
 @njit
 def make_backtest_setup_tuple(
     begin_equity: float,
     is_hedged: TBoolInt,
-    auto_trigger_tp_sl: bool
+    auto_trigger_tp_sl: bool,
 ) -> TBacktestSetupTuple:
     return (begin_equity, is_hedged, auto_trigger_tp_sl)
+
 
 
 def backtest_strategy(
@@ -70,7 +82,7 @@ def backtest_strategy_loop(
     setup: TBacktestSetup,
     params: TStrategyParams,
     state_shape: tuple[int] = (0,)
-) -> tuple[TPositionTripleArray, int, float, np.ndarray]:
+) -> TBacktestResult:
     data_len = len(data)
     nb_of_orders = 0
     (equity, is_hedged_boolint, auto_trigger_tp_sl) = setup
@@ -90,7 +102,7 @@ def backtest_strategy_loop(
         dtype=np.float64
     )
     pending_orders.fill(np.nan)
-    all_pls = np.empty((0, 3), dtype=np.float64) #[[pl, pl_perc, pl_size]]
+    all_pls = np.empty((0, 5), dtype=np.float64) #[[pl, pl_perc, pl_size, pl_close_price, pl_avg_price]]
     state = np.zeros(state_shape, dtype=np.float64)
     state.fill(np.nan)
 
@@ -214,7 +226,7 @@ def backtest_strategy_loop(
                 position_triple[position_index] = next_current_position
 
 
-    return (position_triple, nb_of_orders, equity, all_pls)
+    return (position_triple, nb_of_orders, equity, all_pls, state)
 
 
 
@@ -525,9 +537,19 @@ def applicate_order(
             print("price", price)
             print("--------------------------------")
 
-
         pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * np.sign(current_position_size)
-        all_pls = np.vstack((all_pls, np.array([[final_pos_pl, pl_perc, current_position_size]], dtype=np.float64)))
+        all_pls = np.vstack(
+            (
+                all_pls,
+                np.array([[
+                    final_pos_pl,
+                    pl_perc,
+                    current_position_size,
+                    price,
+                    current_position_avg_price,
+                ]], dtype=np.float64)
+            )
+        )
         next_position = np.array([0., 0., 0.], dtype=np.float64)
     else:
         if position_changed_side:
@@ -549,7 +571,8 @@ def applicate_order(
             else:
                 current_position_side_sign = -1 if current_position_side == SELL else 1 if current_position_side == BUY else 0
                 reduced_size = np.abs(next_pos_size - current_position_size)
-                reduced_size_pl = (price - current_position_avg_price) * reduced_size * current_position_side_sign
+                reduced_size_with_sign = reduced_size * current_position_side_sign
+                reduced_size_pl = (price - current_position_avg_price) * reduced_size_with_sign
                 reduced_size_pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * current_position_side_sign
                 equity += reduced_size_pl
                 if DEBUG:
@@ -562,7 +585,18 @@ def applicate_order(
                     print("next_pos_size", next_pos_size)
                     print("current_position_size", current_position_size)
                     print("--------------------------------")
-                all_pls = np.vstack((all_pls, np.array([[reduced_size_pl, reduced_size_pl_perc, reduced_size]], dtype=np.float64)))
+                all_pls = np.vstack(
+                    (
+                        all_pls,
+                        np.array([[
+                            reduced_size_pl,
+                            reduced_size_pl_perc,
+                            reduced_size_with_sign,
+                            price,
+                            current_position_avg_price,
+                        ]], dtype=np.float64)
+                    )
+                )
 
 
         next_pos_pl = (current_close_price - next_pos_avg_price) * next_pos_size
@@ -590,7 +624,13 @@ def handle_position_side_change(
         pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * np.sign(size_to_close)
         to_close_pl_with_next_open = (price - current_position_avg_price) * size_to_close
         equity += to_close_pl_with_next_open
-        new_pl = np.array([[to_close_pl_with_next_open, pl_perc, size_to_close]], dtype=np.float64)
+        new_pl = np.array([[
+            to_close_pl_with_next_open,
+            pl_perc,
+            size_to_close,
+            price,
+            current_position_avg_price,
+        ]], dtype=np.float64)
         all_pls = np.vstack((all_pls, new_pl))
     
     return (price, equity, all_pls)

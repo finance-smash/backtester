@@ -3,3 +3,4 @@ __pycache__
 __python_env__
 .mypy_cache
 data/
+log
