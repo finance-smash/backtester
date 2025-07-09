@@ -4,6 +4,7 @@ from .type_commons import TSide, BUY, SELL, NO_SIDE, BUY_SIGNAL, SELL_SIGNAL, NO
     TOffset, OFFSET__OPEN, OFFSET__CLOSE, OFFSET__BOTH, TOffsetOpen, TOffsetClose, TOffsetBoth, TBoolInt
 from .helpers import get_ohlcv_data
 from .utils import get_reverse_side
+from backtester.indicators.signal_utils import ema_cross_signal
 from .constants import MAX_NUMBER_OF_PENDING_ORDERS, MAX_NUMBER_OF_OCO_ORDERS
 
 
@@ -12,6 +13,7 @@ __all__ = [
     'TSide', 'BUY', 'SELL', 'NO_SIDE', 'BUY_SIGNAL', 'SELL_SIGNAL', 'NO_SIGNAL',
     'get_ohlcv_data',
     'get_reverse_side',
+    'ema_cross_signal',
     'MAX_NUMBER_OF_PENDING_ORDERS', 'MAX_NUMBER_OF_OCO_ORDERS',
     'TOrderType', 'ORDER_TYPE__MARKET', 'ORDER_TYPE__LIMIT', 'ORDER_TYPE__STOP', \
     'TOffset', 'OFFSET__OPEN', 'OFFSET__CLOSE', 'OFFSET__BOTH', \
