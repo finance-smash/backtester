@@ -30,6 +30,10 @@ PARAMS__LONG_MA_LEN = 0
 PARAMS__SHORT_MA_LEN = 1
 PARAMS__BOLL_BAND_WIDTH = 2
 
+NB_OF_CANDLES_TO_OPTIMIZE_ON = 400000
+NB_OF_CANDLES_TO_TEST_ON = 200000
+NB_OF_CANDLES_FOR_STEP = 50000
+
 def indicators_fn(
     data: TOhlcv,
     params: TStrategyParams
@@ -207,12 +211,44 @@ begin_equity = 100_000_000_00
 
 def maximize_fn(bt_result, params):
     all_pls = bt_result[3]
-    all_sizes_abs = np.abs(all_pls[:, 2])
-    total_size = all_sizes_abs.sum()
-    pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / total_size
-    pl_perc_std = ((all_pls[:, 1] - pl_perc_mean)**2 * all_sizes_abs).sum() / total_size
+    indexes_of_all_orders = bt_result[4]
+    nb_of_batches = 2
+    nb_of_candles_per_batch = np.floor(NB_OF_CANDLES_TO_OPTIMIZE_ON / nb_of_batches)
+    nb_of_pls_per_batch = np.empty(nb_of_batches)
+    for i in range(nb_of_batches):
+        min_index = i * nb_of_candles_per_batch
+        max_index = min_index + nb_of_candles_per_batch
+        order_indexes_in_batch = [idx for idx in indexes_of_all_orders if idx >= min_index and idx < max_index]
+        len_of_order_indexes_in_batch = len(order_indexes_in_batch)
+        print(f"len_of_order_indexes_in_batch: {len_of_order_indexes_in_batch}")
+        nb_of_pls_per_batch[i] = len_of_order_indexes_in_batch
+    print(f"nb_of_pls_per_batch: {nb_of_pls_per_batch}")
+    cumsum_nb_of_pls_per_batch = np.cumsum(nb_of_pls_per_batch)
+    print(f"cumsum_nb_of_pls_per_batch: {cumsum_nb_of_pls_per_batch}")
 
-    return (pl_perc_mean*100, np.array([pl_perc_std, len(all_pls)]))
+    pl_perc_means_per_batch = np.empty(nb_of_batches)
+    nb_of_pls_per_batch = np.empty(nb_of_batches)
+
+    all_pls_size_abs = np.abs(all_pls[:, 2])
+    all_pls_pl_perc = all_pls[:, 1]
+
+    for i in range(nb_of_batches):
+        pls_begin_at = 0 if i == 0 else int(cumsum_nb_of_pls_per_batch[i-1])
+        pls_end_at = int(cumsum_nb_of_pls_per_batch[i])
+        print(f"pls_begin_at: {pls_begin_at}, pls_end_at: {pls_end_at}")
+        pls_size_abs_in_batch = all_pls_size_abs[pls_begin_at:pls_end_at]
+        print(f"pls_size_abs_in_batch: {pls_size_abs_in_batch}")
+        pls_pl_perc_in_batch = all_pls_pl_perc[pls_begin_at:pls_end_at]
+
+        total_size = pls_size_abs_in_batch.sum()
+        print(f"total_size: {total_size}")
+        print(f"sum : {(pls_pl_perc_in_batch * pls_size_abs_in_batch).sum()}")
+        pl_perc_mean = (pls_pl_perc_in_batch * pls_size_abs_in_batch).sum() / total_size
+        print(f"pl_perc_mean: {pl_perc_mean}")
+        pl_perc_means_per_batch[i] = pl_perc_mean
+        nb_of_pls_per_batch[i] = len(pls_size_abs_in_batch)
+
+    return (pl_perc_means_per_batch.mean()*100, np.array([nb_of_pls_per_batch.mean()]))
 
 
 def parse_bt_result(bt_result):
@@ -252,7 +288,7 @@ if __name__ == '__main__':
         auto_trigger_tp_sl=True
     )
 
-    is_backtesting = True
+    is_backtesting = False
 
     if is_backtesting:
         bt_result = backtest_strategy(
@@ -318,9 +354,9 @@ if __name__ == '__main__':
             data=ohlcv,
             backtest_setup=backtest_setup,
             maximize_fn=maximize_fn,
-            nb_of_candles_to_optimize_on=350000,
-            nb_of_candles_to_test_on=200000,
-            nb_of_candles_for_step=100000,
+            nb_of_candles_to_optimize_on=NB_OF_CANDLES_TO_OPTIMIZE_ON,
+            nb_of_candles_to_test_on=NB_OF_CANDLES_TO_TEST_ON,
+            nb_of_candles_for_step=NB_OF_CANDLES_FOR_STEP,
             filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
             nb_of_processes=4,
             parse_test_result_fn=parse_bt_result
@@ -335,7 +371,7 @@ if __name__ == '__main__':
 
 
 
-    is_optimizing = False
+    is_optimizing = True
 
     if is_optimizing:
         # all_params = [
@@ -353,7 +389,7 @@ if __name__ == '__main__':
                 0
             ),
             strategy=LimitMeanRevStrategy,
-            data=ohlcv,
+            data=ohlcv[0:NB_OF_CANDLES_TO_OPTIMIZE_ON],
             backtest_setup=backtest_setup,
             maximize_fn=maximize_fn,
             filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
