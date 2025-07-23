@@ -23,13 +23,16 @@ def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn):
     """Process a single batch of possibilities"""
     batch_results = []
     for params in batch_data:
-        bt_result = backtest_strategy(
-            strategy=strategy,
-            data=data,
-            setup=backtest_setup,
-            params=params,
-        )
-        [to_maximize_value, maximize_fn_infos] = maximize_fn(bt_result, params)
+        maximize_fn_input = []
+        for data_item in data:
+            bt_result = backtest_strategy(
+                strategy=strategy,
+                data=data_item,
+                setup=backtest_setup,
+                params=params,
+            )
+            maximize_fn_input.append((bt_result, params))
+        [to_maximize_value, maximize_fn_infos] = maximize_fn(maximize_fn_input)
         to_append = np.concatenate(([
             [to_maximize_value],
             params,
@@ -38,56 +41,40 @@ def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn):
         batch_results.append(to_append)
     return batch_results
 
+
+
 def task_wrapper(args):
     return process_batch(*args)
-
-
-def test_fn(x: int):
-    return x*2
-
-test_batch = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
-
-def _run_parallel_optimization(batches, process_batch_partial, nb_of_processes):
-    """Helper function to run parallel optimization"""
-    with Pool(nb_of_processes) as pool:
-        print("pool")
-        print(pool)
-        results = pool.map(process_batch_partial, batches)
-        results_test = pool.map(test_fn, test_batch)
-        print("results_test")
-        print(results_test)
-        print("results")
-        print(results)
-    return results
 
 
 
 def grid_optimize_inner(
     strategy: Strategy,
     all_possibilities: npt.NDArray[np.float64],
-    data: TOhlcv,
+    data: list[TOhlcv],
     backtest_setup: TBacktestSetup,
     maximize_fn: Callable[[
-        TBacktestResult,
-        TStrategyParams,
-    ], tuple[
-        float, # to maximize value
-        np.ndarray # maximize infos
-    ]],
+        list[tuple[TBacktestResult, TStrategyParams]],
+    ], tuple[float, np.ndarray]],
     nb_of_processes: int = 1
 ):
     nb_of_possibilities = len(all_possibilities)
     if nb_of_processes <= 1:
         opti_result = []
+        # data_as_list = data if isinstance(data, list) else [data]
         for i in tqdm(range(0, nb_of_possibilities), desc="Optimizing strategy"):
             params = all_possibilities[i]
-            bt_result = backtest_strategy(
-                strategy=strategy,
-                data=data,
-                setup=backtest_setup,
-                params=params,
-            )
-            [to_maximize_value, maximize_fn_infos] = maximize_fn(bt_result, params)
+            maximize_fn_input = []
+            data_item = data[0]
+            for data_item in data:
+                bt_result = backtest_strategy(
+                    strategy=strategy,
+                    data=data_item,
+                    setup=backtest_setup,
+                    params=params,
+                )
+                maximize_fn_input.append((bt_result, params))
+            [to_maximize_value, maximize_fn_infos] = maximize_fn(maximize_fn_input)
             to_append = np.concatenate(([
                 [to_maximize_value],
                 params,
@@ -98,40 +85,23 @@ def grid_optimize_inner(
         nb_of_processes = min(nb_of_processes, cpu_count())
         print(f"nb_of_processes: {nb_of_processes}")
         batch_size = nb_of_possibilities // nb_of_processes
+        remaining_batch_size = nb_of_possibilities % nb_of_processes
+        print(f"batch_size: {batch_size}")
+        print(f"remaining_batch_size: {remaining_batch_size}")
         batches = [all_possibilities[i:i + batch_size] for i in range(0, nb_of_possibilities, batch_size)]
-        
-        # Create a partial function with the fixed arguments
-        # def process_batch_partial(batch_data):
-        #     return process_batch(
-        #         batch_data=batch_data,
-        #         strategy=strategy,
-        #         data=data,
-        #         backtest_setup=backtest_setup,
-        #         maximize_fn=maximize_fn
-        #     )
-        
-        # Process batches in parallel
-        # Process batches in parallel
-        # results = _run_parallel_optimization(batches, process_batch_partial, nb_of_processes)
+        if remaining_batch_size > 0:
+            batches.append(all_possibilities[-remaining_batch_size:])
+
         batches_arg_list = list(map(lambda x: (x, strategy, data, backtest_setup, maximize_fn), batches))
         print("batches_arg_list")
         print(batches_arg_list)
         with Pool(nb_of_processes) as pool:
-            # print("pool")
-            # print(pool)
-            # results = pool.map(task_wrapper, batches_arg_list)
             results = list(tqdm(
                 pool.imap(task_wrapper, batches_arg_list),
                 total=len(batches_arg_list),
                 desc="Optimizing strategy"
             ))
-            results_test = pool.map(test_fn, test_batch)
-            print("results_test")
-            print(results_test)
-            # print("results")
-            # print(results)
         
-        # Flatten results from all batches
         opti_result = [item for batch in results for item in batch]
     opti_result = np.array(opti_result)
 
@@ -145,11 +115,10 @@ def grid_optimize_inner(
 def grid_optimize(
     grid_optimization_setup: TGridOptimizationSetupTuple,
     strategy: Strategy,
-    data: TOhlcv,
+    data: list[TOhlcv],
     backtest_setup: TBacktestSetup,
     maximize_fn: Callable[[
-        TBacktestResult,
-        TStrategyParams,
+        list[tuple[TBacktestResult, TStrategyParams]],
     ], tuple[float, np.ndarray]],
     filter_possibility_fn: Callable[[
         TStrategyParams
@@ -192,22 +161,3 @@ def get_cartesian_product(all_params_possibilities):
         List of lists containing all possible combinations
     """
     return list(product(*all_params_possibilities))
-
-
-# if __name__ == '__main__':
-    # with Pool(4) as pool:
-    #     # results = pool.map(process_batch_partial, batches)
-    #     results = pool.map(test_fn, test_batch)
-    #     print("results")
-    #     print(results)
-    #     # results = list(tqdm(
-    #     #     pool.map(process_batch_partial, batches),
-    #     #     total=len(batches),
-    #     #     desc="Optimizing strategy"
-    #     # ))
-
-    # _run_parallel_optimization(
-    #     batches=None,
-    #     process_batch_partial=None,
-    #     nb_of_processes=4
-    # )

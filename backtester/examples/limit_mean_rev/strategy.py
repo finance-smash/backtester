@@ -1,5 +1,9 @@
+import pandas as pd
+import time
+from numba import njit
 import talib
 import numpy as np
+from tqdm import tqdm
 
 from backtester.commons import BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE,\
     TOhlcv, ORDER_TYPE__LIMIT, OFFSET__CLOSE, OFFSET__OPEN, TSide, json_dumps_numpy
@@ -10,7 +14,7 @@ from backtester.strategy import TStrategyParams, cancel_pending_order_at_index
 from backtester.order import TOrders, ORDER__SIZE
 from backtester.position import TPositionTripleArray, POSITION__SIZE
 from backtester.strategy import backtest_strategy, grid_optimize
-from backtester.strategy.backtest_strategy import make_backtest_setup_tuple
+from backtester.strategy.backtest_strategy import TBacktestResult, make_backtest_setup_tuple
 from backtester.strategy.grid_optimize_and_test_loop import grid_optimize_and_test_loop
 from backtester.strategy.strategy import Strategy
 from backtester.bt_result_plugin import with_fees
@@ -191,8 +195,8 @@ def order_fn(
 
     np_arr_actions = np.array(order_actions, dtype=np.float64) if len(order_actions) > 0 else np.empty((0, 7), dtype=np.float64)
 
-    if len(order_actions) > 0:
-        state = np.concatenate((state, np.array([index])))
+    # if len(order_actions) > 0:
+    #     state = np.concatenate((state, np.array([index]))) #NOTE this increases the time taken by A LOOOOOT find another way to do this
 
     return (np_arr_actions, state)
 
@@ -205,51 +209,12 @@ LimitMeanRevStrategy = Strategy(
 
 ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
 
+print("ohlcv length")
+print(len(ohlcv))
+
 # ohlcv = ohlcv[0:200000]
 # ohlcv = ohlcv[0:200000]
 begin_equity = 100_000_000_00
-
-def maximize_fn(bt_result, params):
-    all_pls = bt_result[3]
-    indexes_of_all_orders = bt_result[4]
-    nb_of_batches = 2
-    nb_of_candles_per_batch = np.floor(NB_OF_CANDLES_TO_OPTIMIZE_ON / nb_of_batches)
-    nb_of_pls_per_batch = np.empty(nb_of_batches)
-    for i in range(nb_of_batches):
-        min_index = i * nb_of_candles_per_batch
-        max_index = min_index + nb_of_candles_per_batch
-        order_indexes_in_batch = [idx for idx in indexes_of_all_orders if idx >= min_index and idx < max_index]
-        len_of_order_indexes_in_batch = len(order_indexes_in_batch)
-        print(f"len_of_order_indexes_in_batch: {len_of_order_indexes_in_batch}")
-        nb_of_pls_per_batch[i] = len_of_order_indexes_in_batch
-    print(f"nb_of_pls_per_batch: {nb_of_pls_per_batch}")
-    cumsum_nb_of_pls_per_batch = np.cumsum(nb_of_pls_per_batch)
-    print(f"cumsum_nb_of_pls_per_batch: {cumsum_nb_of_pls_per_batch}")
-
-    pl_perc_means_per_batch = np.empty(nb_of_batches)
-    nb_of_pls_per_batch = np.empty(nb_of_batches)
-
-    all_pls_size_abs = np.abs(all_pls[:, 2])
-    all_pls_pl_perc = all_pls[:, 1]
-
-    for i in range(nb_of_batches):
-        pls_begin_at = 0 if i == 0 else int(cumsum_nb_of_pls_per_batch[i-1])
-        pls_end_at = int(cumsum_nb_of_pls_per_batch[i])
-        print(f"pls_begin_at: {pls_begin_at}, pls_end_at: {pls_end_at}")
-        pls_size_abs_in_batch = all_pls_size_abs[pls_begin_at:pls_end_at]
-        print(f"pls_size_abs_in_batch: {pls_size_abs_in_batch}")
-        pls_pl_perc_in_batch = all_pls_pl_perc[pls_begin_at:pls_end_at]
-
-        total_size = pls_size_abs_in_batch.sum()
-        print(f"total_size: {total_size}")
-        print(f"sum : {(pls_pl_perc_in_batch * pls_size_abs_in_batch).sum()}")
-        pl_perc_mean = (pls_pl_perc_in_batch * pls_size_abs_in_batch).sum() / total_size
-        print(f"pl_perc_mean: {pl_perc_mean}")
-        pl_perc_means_per_batch[i] = pl_perc_mean
-        nb_of_pls_per_batch[i] = len(pls_size_abs_in_batch)
-
-    return (pl_perc_means_per_batch.mean()*100, np.array([nb_of_pls_per_batch.mean()]))
-
 
 def parse_bt_result(bt_result):
     all_pls_with_fees_res = with_fees_plugin(bt_result)
@@ -280,6 +245,38 @@ def parse_bt_result(bt_result):
         final_gain_with_last_pls_rounded
     ])
 
+
+@njit
+def maximize_fn(results_list: list[tuple[TBacktestResult, TStrategyParams]]):
+    (bt_result, params) = results_list[0]
+    all_pls = bt_result[3]
+    all_sizes_abs = np.abs(all_pls[:, 2])
+    total_size = all_sizes_abs.sum()
+    pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / total_size
+
+    ret = (pl_perc_mean*100, np.array([len(all_pls)]))
+    return ret
+
+@njit
+def maximize_fn2(results_list: list[tuple[TBacktestResult, TStrategyParams]]):
+    pl_perc_means = np.zeros(len(results_list))
+    all_pls_lenghts = np.zeros(len(results_list))
+    for i, (bt_result, params) in enumerate(results_list):
+        all_pls = bt_result[3]
+        all_sizes_abs = np.abs(all_pls[:, 2])
+        total_size = all_sizes_abs.sum()
+        if total_size == 0:
+            pl_perc_mean = -1
+        else:
+            pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / (total_size)
+        pl_perc_means[i] = pl_perc_mean*100
+        all_pls_lenghts[i] = len(all_pls)
+
+
+    concat_len_and_pl_perc_means = np.concatenate((all_pls_lenghts, pl_perc_means))
+    return (pl_perc_means.min(), concat_len_and_pl_perc_means)
+
+
 if __name__ == '__main__':
 
     backtest_setup = make_backtest_setup_tuple(
@@ -288,16 +285,27 @@ if __name__ == '__main__':
         auto_trigger_tp_sl=True
     )
 
-    is_backtesting = False
+    is_backtesting = True
 
     if is_backtesting:
         bt_result = backtest_strategy(
             strategy=LimitMeanRevStrategy,
-            data=ohlcv,
+            data=ohlcv[0:1000],
             setup=backtest_setup,
-            params=np.array([220, 75, 2.25]),
-            state_shape=(0,)
+            params=np.array([220,90,2.75]),
         )
+
+        begin_time = time.time()
+
+        bt_result = backtest_strategy(
+            strategy=LimitMeanRevStrategy,
+            data=ohlcv[200000*2:200000*3],
+            setup=backtest_setup,
+            params=np.array([220,90,2.75]),
+        )
+
+        end_time = time.time()
+        print(f"Time taken: {end_time - begin_time} seconds")
 
         all_pls_with_fees_res = with_fees_plugin(bt_result)
         all_pls_with_fees = all_pls_with_fees_res[:, 0]
@@ -370,6 +378,9 @@ if __name__ == '__main__':
         print(json_dump_loop_result, file=open("loop_result.json", "w"))
 
 
+    N = 100000
+    number_of_data_chunks = 4
+    first_data_chunk_index = 2
 
     is_optimizing = True
 
@@ -383,15 +394,17 @@ if __name__ == '__main__':
         # print("all_params")
         # print(all_params)
 
+        data = [ohlcv[(i + first_data_chunk_index)*N:(i+1+first_data_chunk_index)*N] for i in range(number_of_data_chunks)]
+
         grid_optim_result = grid_optimize(
             grid_optimization_setup=(
                 all_params,
                 0
             ),
             strategy=LimitMeanRevStrategy,
-            data=ohlcv[0:NB_OF_CANDLES_TO_OPTIMIZE_ON],
+            data=data,
             backtest_setup=backtest_setup,
-            maximize_fn=maximize_fn,
+            maximize_fn=maximize_fn2,
             filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
             nb_of_processes=2
         )
@@ -406,12 +419,51 @@ if __name__ == '__main__':
         # print("best_params")
         # print(best_params)
 
-        import pandas as pd
-
         # Create column names based on parameters and result
-        columns = ['maximize_value', 'long_ma_len', 'short_ma_len', 'std_dev_mult', 'maximize_value_std']
+        pl_len_cols = [f'pl_len_{i}' for i in range(number_of_data_chunks)]
+        pl_perc_cols = [f'pl_perc_{i}' for i in range(number_of_data_chunks)]
+        columns = ['maximize_value', 'long_ma_len', 'short_ma_len', 'std_dev_mult'] + pl_len_cols + pl_perc_cols
+
+        print("grid_optim_result")
+        print(grid_optim_result)
 
         # Convert to DataFrame and save to CSV
-        pd.DataFrame(grid_optim_result, columns=columns).to_csv('grid_optimization_results.csv', index=False)
+        pd.DataFrame(grid_optim_result, columns=columns).to_csv(
+            f'grid_optimization_results_{first_data_chunk_index}.csv', index=False
+        )
+
     
+    if_backtesting_on_opti_result = True
+
+    if if_backtesting_on_opti_result:
+        grid_optim_result = pd.read_csv(f'grid_optimization_results_{first_data_chunk_index}.csv')
+        print("grid_optim_result")
+        print(grid_optim_result)
+
+        new_csv_data = []
+
+        for optim_result in tqdm(grid_optim_result.itertuples()):
+            optim_result = optim_result[1:]
+            optim_result_params = optim_result[1:4]
+            bt_result = backtest_strategy(
+                strategy=LimitMeanRevStrategy,
+                data=ohlcv[N*(number_of_data_chunks + first_data_chunk_index):N*(number_of_data_chunks+1+first_data_chunk_index)],
+                setup=backtest_setup,
+                params=optim_result_params,
+            )
+            all_pls = bt_result[3]
+            all_sizes_abs = np.abs(all_pls[:, 2])
+            total_size = all_sizes_abs.sum()
+            pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / total_size
+
+            new_csv_data.append(optim_result + (pl_perc_mean*100,))
+
+        new_columns = grid_optim_result.columns.tolist() + ['pl_perc_mean_test']
+        
+        pd.DataFrame(new_csv_data, columns=new_columns).to_csv(
+            f'grid_optimization_results_{first_data_chunk_index}_2.csv', index=False
+        )
+
+
+
 
