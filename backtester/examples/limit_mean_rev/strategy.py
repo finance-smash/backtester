@@ -1,3 +1,4 @@
+import os
 import pandas as pd
 import time
 from numba import njit
@@ -18,9 +19,16 @@ from backtester.strategy.backtest_strategy import TBacktestResult, make_backtest
 from backtester.strategy.grid_optimize_and_test_loop import grid_optimize_and_test_loop
 from backtester.strategy.strategy import Strategy
 from backtester.bt_result_plugin import with_fees
+from backtester.strategy.window_hardtest_strategy.window_hardtest_strategy import window_hardtest_strategy_inner
 
 COMMISSION_RATE = 0.00018
 with_fees_plugin = with_fees(COMMISSION_RATE)
+
+
+def safe_div(a, b):
+    if b == 0:
+        return np.nan
+    return a / b
 
 CLOSE = 0
 LONG_MA = 1
@@ -134,30 +142,32 @@ def order_fn(
 
     if position_long_is_open:
         next_limit_close = max(short_ma_at_index, close_at_index + 1)
-        long_close_order_action = make_order_action_tuple(
-            relative_size=0.,
-            absolute_size=np.abs(position_long_size),
-            offset=OFFSET__CLOSE,
-            price=next_limit_close,
-            order_type=ORDER_TYPE__LIMIT,
-            side=SELL_SIGNAL,
-            user_id=0
-        )
-        order_actions.append(long_close_order_action)
+        if next_limit_close > 0:
+            long_close_order_action = make_order_action_tuple(
+                relative_size=0.,
+                absolute_size=np.abs(position_long_size),
+                offset=OFFSET__CLOSE,
+                price=next_limit_close,
+                order_type=ORDER_TYPE__LIMIT,
+                side=SELL_SIGNAL,
+                user_id=0
+            )
+            order_actions.append(long_close_order_action)
 
 
     if position_short_is_open:
         next_limit_close = min(short_ma_at_index, close_at_index - 1)
-        short_close_order_action = make_order_action_tuple(
-            relative_size=0.,
-            absolute_size=np.abs(position_short_size),
-            offset=OFFSET__CLOSE,
-            price=next_limit_close,
-            order_type=ORDER_TYPE__LIMIT,
-            side=BUY_SIGNAL,
-            user_id=0
-        )
-        order_actions.append(short_close_order_action)
+        if next_limit_close > 0:
+            short_close_order_action = make_order_action_tuple(
+                relative_size=0.,
+                absolute_size=np.abs(position_short_size),
+                offset=OFFSET__CLOSE,
+                price=next_limit_close,
+                order_type=ORDER_TYPE__LIMIT,
+                side=BUY_SIGNAL,
+                user_id=0
+            )
+            order_actions.append(short_close_order_action)
 
 
     signal_at_index: TSide = NO_SIGNAL
@@ -170,27 +180,29 @@ def order_fn(
 
 
     if signal_at_index == BUY_SIGNAL:
-        order_actions.append(make_order_action_tuple(
-            relative_size=0.,
-            absolute_size=1.,
-            take_profit=short_ma_at_index,
-            price=bollinger_bands_lower_at_index,
-            order_type=ORDER_TYPE__LIMIT,
-            side=BUY_SIGNAL,
-            offset=OFFSET__OPEN,
-            user_id=0
-        ))
+        if bollinger_bands_lower_at_index > 0:
+            order_actions.append(make_order_action_tuple(
+                relative_size=0.,
+                absolute_size=1.,
+                take_profit=short_ma_at_index,
+                price=bollinger_bands_lower_at_index,
+                order_type=ORDER_TYPE__LIMIT,
+                side=BUY_SIGNAL,
+                offset=OFFSET__OPEN,
+                user_id=0
+            ))
     elif signal_at_index == SELL_SIGNAL:
-        order_actions.append(make_order_action_tuple(
-            relative_size=0.,
-            absolute_size=1.,
-            take_profit=short_ma_at_index,
-            price=bollinger_bands_upper_at_index,
-            order_type=ORDER_TYPE__LIMIT,
-            side=SELL_SIGNAL,
-            offset=OFFSET__OPEN,
-            user_id=0
-        ))
+        if bollinger_bands_upper_at_index > 0:
+            order_actions.append(make_order_action_tuple(
+                relative_size=0.,
+                absolute_size=1.,
+                take_profit=short_ma_at_index,
+                price=bollinger_bands_upper_at_index,
+                order_type=ORDER_TYPE__LIMIT,
+                side=SELL_SIGNAL,
+                offset=OFFSET__OPEN,
+                user_id=0
+            ))
 
 
     np_arr_actions = np.array(order_actions, dtype=np.float64) if len(order_actions) > 0 else np.empty((0, 7), dtype=np.float64)
@@ -206,11 +218,8 @@ LimitMeanRevStrategy = Strategy(
     indicators_fn=indicators_fn,
     order_fn=order_fn
 )
-
-ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
-
-print("ohlcv length")
-print(len(ohlcv))
+crypto = 'ETH-USDT'
+ohlcv = get_ohlcv_data('crypto', crypto, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data")
 
 # ohlcv = ohlcv[0:200000]
 # ohlcv = ohlcv[0:200000]
@@ -266,7 +275,7 @@ def maximize_fn2(results_list: list[tuple[TBacktestResult, TStrategyParams]]):
         all_sizes_abs = np.abs(all_pls[:, 2])
         total_size = all_sizes_abs.sum()
         if total_size == 0:
-            pl_perc_mean = -1
+            pl_perc_mean = 0
         else:
             pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / (total_size)
         pl_perc_means[i] = pl_perc_mean*100
@@ -274,7 +283,7 @@ def maximize_fn2(results_list: list[tuple[TBacktestResult, TStrategyParams]]):
 
 
     concat_len_and_pl_perc_means = np.concatenate((all_pls_lenghts, pl_perc_means))
-    return (pl_perc_means.min(), concat_len_and_pl_perc_means)
+    return (pl_perc_means.mean(), concat_len_and_pl_perc_means)
 
 
 if __name__ == '__main__':
@@ -285,7 +294,7 @@ if __name__ == '__main__':
         auto_trigger_tp_sl=True
     )
 
-    is_backtesting = True
+    is_backtesting = False
 
     if is_backtesting:
         bt_result = backtest_strategy(
@@ -345,8 +354,8 @@ if __name__ == '__main__':
         np.arange(2, 3, 0.25),
     ]
     # all_params = [
-    #     np.arange(100, 150, 10),
-    #     np.arange(10, 30, 5),
+    #     np.arange(100, 120, 10),
+    #     np.arange(10, 20, 5),
     #     np.arange(1, 1.5, 0.25),
     # ]
 
@@ -378,11 +387,11 @@ if __name__ == '__main__':
         print(json_dump_loop_result, file=open("loop_result.json", "w"))
 
 
-    N = 100000
-    number_of_data_chunks = 4
-    first_data_chunk_index = 2
+    N = 20000
+    number_of_data_chunks = 10
+    first_data_chunk_index = 1
 
-    is_optimizing = True
+    is_optimizing = False
 
     if is_optimizing:
         # all_params = [
@@ -429,25 +438,55 @@ if __name__ == '__main__':
 
         # Convert to DataFrame and save to CSV
         pd.DataFrame(grid_optim_result, columns=columns).to_csv(
-            f'grid_optimization_results_{first_data_chunk_index}.csv', index=False
+            f'grid_optimization_results_{first_data_chunk_index}_{crypto}.csv', index=False
         )
 
     
-    if_backtesting_on_opti_result = True
+    if_backtesting_on_opti_result = False
 
     if if_backtesting_on_opti_result:
-        grid_optim_result = pd.read_csv(f'grid_optimization_results_{first_data_chunk_index}.csv')
+        grid_optim_result = pd.read_csv(f'grid_optimization_results_{first_data_chunk_index}_{crypto}.csv')
         print("grid_optim_result")
         print(grid_optim_result)
 
         new_csv_data = []
+
+        print('N*(number_of_data_chunks + first_data_chunk_index)')
+        print(N*(number_of_data_chunks + first_data_chunk_index))
+        print('N*(number_of_data_chunks+1+first_data_chunk_index)')
+        print(N*(number_of_data_chunks+1+first_data_chunk_index))
+
+        test_ohlcv = ohlcv[N*(number_of_data_chunks + first_data_chunk_index):N*(number_of_data_chunks+1+first_data_chunk_index)]
+        print('test_ohlcv[0]')
+        print(test_ohlcv[0])
+        print('test_ohlcv[1]')
+        print(test_ohlcv[1])
+
+        re_optim = grid_optimize(
+            grid_optimization_setup=(
+                all_params,
+                0
+            ),
+            strategy=LimitMeanRevStrategy,
+            data=[test_ohlcv],
+            backtest_setup=backtest_setup,
+            maximize_fn=maximize_fn2,
+            filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
+            nb_of_processes=2
+        )
+
+        columns = ['maximize_value', 'long_ma_len', 'short_ma_len', 'std_dev_mult'] + ['pl_test_len', 'pl_test_mean_perc']
+        # Convert to DataFrame and save to CSV
+        pd.DataFrame(re_optim, columns=columns).to_csv(
+            f'grid_optimization_results_{first_data_chunk_index}_{crypto}_with_reopt.csv', index=False
+        )
 
         for optim_result in tqdm(grid_optim_result.itertuples()):
             optim_result = optim_result[1:]
             optim_result_params = optim_result[1:4]
             bt_result = backtest_strategy(
                 strategy=LimitMeanRevStrategy,
-                data=ohlcv[N*(number_of_data_chunks + first_data_chunk_index):N*(number_of_data_chunks+1+first_data_chunk_index)],
+                data=test_ohlcv,
                 setup=backtest_setup,
                 params=optim_result_params,
             )
@@ -460,10 +499,142 @@ if __name__ == '__main__':
 
         new_columns = grid_optim_result.columns.tolist() + ['pl_perc_mean_test']
         
+        print('new_col len', len(new_columns))
+
+        
         pd.DataFrame(new_csv_data, columns=new_columns).to_csv(
-            f'grid_optimization_results_{first_data_chunk_index}_2.csv', index=False
+            f'grid_optimization_results_{first_data_chunk_index}_2_{crypto}.csv', index=False
         )
+    
 
 
+    cryptos = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT', 'ADA-USDT', 'DOT-USDT', 'LINK-USDT', 'BCH-USDT', 'LTC-USDT']
+    crypto_ohlcv_dict = {c: get_ohlcv_data('crypto', c, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data") for c in cryptos}
+    window_size = 30000
+    crypto_nb_of_optimization_windows_dict = {c: len(crypto_ohlcv_dict[c]) // window_size for c in cryptos}
+
+    is_window_hardtest = False
+    if is_window_hardtest:
+        all_params = [
+            np.arange(24000, 48000, 1000),
+            np.arange(20, 100, 5),
+            np.arange(2, 3, 0.25),
+        ]
+        for c in cryptos:
+            file_name = f'window_hardtest_results_{c}.csv'
+            file_already_exists = os.path.exists(file_name)
+            if file_already_exists:
+                continue
+
+            ohlcv_data = crypto_ohlcv_dict[c]
+            print('ohlcv length for', c)
+            print(len(ohlcv_data))
+
+            nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[c]
+            print('nb_of_optimization_windows for', c)
+            print(nb_of_optimization_windows)
+
+            pl_len_cols = [f'pl_len_{i}' for i in range(nb_of_optimization_windows)]
+            pl_perc_cols = [f'pl_perc_{i}' for i in range(nb_of_optimization_windows)]
+            columns = ['maximize_value', 'long_ma_len', 'short_ma_len', 'std_dev_mult'] + pl_len_cols + pl_perc_cols
+            new_columns = columns + ['pl_test_min', 'pl_test_len', 'pl_test_mean_perc']
+
+            df = window_hardtest_strategy_inner(
+                ohlcv=ohlcv_data,
+                optimization_window=window_size,
+                nb_of_optimization_windows=nb_of_optimization_windows,
+                test_window=window_size,
+                maximize_fn=maximize_fn2,
+                strategy=LimitMeanRevStrategy,
+                backtest_setup=backtest_setup,
+                grid_optimization_setup=(
+                    all_params,
+                    0
+                ),
+                final_csv_column_names=new_columns,
+                filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
+                nb_of_test_windows=1,
+                first_optimization_window_index=0,
+                nb_of_processes=8,
+                begin_at_index=48000,
+            )
+
+            df.to_csv(file_name, index=False)
 
 
+    is_analyzing_window_hardtest = True
+    if is_analyzing_window_hardtest:
+
+        for crypto in cryptos:
+            nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[crypto]
+            how_many_windows_to_analyze = 2
+            df = pd.read_csv(f'window_hardtest_results_{crypto}.csv', nrows=10)
+
+            nb_of_items_analyzed = 0
+            nb_of_items_positive_analyzed = 0
+            nb_of_items_negative_analyzed = 0
+
+            avg_pl_sum = 0
+            avg_pl_if_positive_sum = 0
+            avg_pl_if_negative_sum = 0
+
+            for index, row  in df.iterrows():
+                for j in range(how_many_windows_to_analyze, nb_of_optimization_windows):
+                    pl_perc_curr = row[f'pl_perc_{j}']
+                    pl_len_curr = row[f'pl_len_{j}']
+
+                    if pl_len_curr == 0:
+                        continue
+
+                    pl_perc_all_mean = 0
+                    pl_perc_all_len = 0
+                    for i in range(j - how_many_windows_to_analyze, j):
+                        pl_perc_mean = row[f'pl_perc_{i}']
+                        pl_perc_len = row[f'pl_len_{i}']
+                        pl_perc_all_mean += (pl_perc_mean * pl_perc_len)
+                        pl_perc_all_len += pl_perc_len
+                    
+                    if pl_perc_all_len == 0:
+                        continue
+
+                    nb_of_items_analyzed += 1
+                    avg_pl_sum += pl_perc_curr
+                    
+                    if pl_perc_all_mean > 0:
+                        nb_of_items_positive_analyzed += 1
+                        avg_pl_if_positive_sum += pl_perc_curr
+                    else:
+                        nb_of_items_negative_analyzed += 1
+                        avg_pl_if_negative_sum += pl_perc_curr
+
+
+            avg_pl = safe_div(avg_pl_sum, nb_of_items_analyzed)
+            avg_pl_if_positive = safe_div(avg_pl_if_positive_sum, nb_of_items_positive_analyzed)
+            avg_pl_if_negative = safe_div(avg_pl_if_negative_sum, nb_of_items_negative_analyzed)
+
+            print('-'*30)
+            print('-'*30)
+            print('crypto')
+            print(crypto)
+            print('-'*30)
+            print('nb_of_optimization_windows')
+            print(nb_of_optimization_windows)
+            print('-'*30)
+            print('how_many_windows_to_analyze')
+            print(how_many_windows_to_analyze)
+            print('-'*30)
+            print('nb_of_items_analyzed')
+            print(nb_of_items_analyzed)
+            print('avg_pl')
+            print(avg_pl, '%')
+            print('-'*30)
+            print('nb_of_items_positive_analyzed')
+            print(nb_of_items_positive_analyzed)
+            print('avg_pl_if_positive')
+            print(avg_pl_if_positive, '%')
+            print('-'*30)
+            print('nb_of_items_negative_analyzed')
+            print(nb_of_items_negative_analyzed)
+            print('avg_pl_if_negative')
+            print(avg_pl_if_negative, '%')
+            print('-'*30)

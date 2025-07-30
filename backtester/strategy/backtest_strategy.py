@@ -81,7 +81,8 @@ def backtest_strategy_loop(
     data: TOhlcv,
     setup: TBacktestSetup,
     params: TStrategyParams,
-    state_shape: tuple[int] = (0,)
+    state_shape: tuple[int] = (0,),
+    begin_at_index: int = 0
 ) -> TBacktestResult:
     data_len = len(data)
     nb_of_orders = 0
@@ -107,7 +108,7 @@ def backtest_strategy_loop(
     state.fill(np.nan)
 
 
-    for i in range(data_len - 1):
+    for i in range(begin_at_index, data_len - 1):
         (
             equity,
             position_triple,

@@ -17,6 +17,14 @@ TGridOptimizationSetupTuple = tuple[
     int, #max number of tries, if 0 all tries are done
 ]
 
+TFilterPossibilityFn = Callable[[
+    TStrategyParams
+], bool] | None
+
+TMaximizeFn = Callable[[
+    list[tuple[TBacktestResult, TStrategyParams]],
+], tuple[float, np.ndarray]]
+
 
 
 def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn):
@@ -56,7 +64,8 @@ def grid_optimize_inner(
     maximize_fn: Callable[[
         list[tuple[TBacktestResult, TStrategyParams]],
     ], tuple[float, np.ndarray]],
-    nb_of_processes: int = 1
+    nb_of_processes: int = 1,
+    begin_at_index: int = 0
 ):
     nb_of_possibilities = len(all_possibilities)
     if nb_of_processes <= 1:
@@ -72,6 +81,7 @@ def grid_optimize_inner(
                     data=data_item,
                     setup=backtest_setup,
                     params=params,
+                    begin_at_index=begin_at_index
                 )
                 maximize_fn_input.append((bt_result, params))
             [to_maximize_value, maximize_fn_infos] = maximize_fn(maximize_fn_input)
@@ -93,8 +103,8 @@ def grid_optimize_inner(
             batches.append(all_possibilities[-remaining_batch_size:])
 
         batches_arg_list = list(map(lambda x: (x, strategy, data, backtest_setup, maximize_fn), batches))
-        print("batches_arg_list")
-        print(batches_arg_list)
+        print("batches_arg_list len")
+        print(len(batches_arg_list))
         with Pool(nb_of_processes) as pool:
             results = list(tqdm(
                 pool.imap(task_wrapper, batches_arg_list),
@@ -117,13 +127,10 @@ def grid_optimize(
     strategy: Strategy,
     data: list[TOhlcv],
     backtest_setup: TBacktestSetup,
-    maximize_fn: Callable[[
-        list[tuple[TBacktestResult, TStrategyParams]],
-    ], tuple[float, np.ndarray]],
-    filter_possibility_fn: Callable[[
-        TStrategyParams
-    ], bool] | None = None,
-    nb_of_processes: int = 1
+    maximize_fn: TMaximizeFn,
+    filter_possibility_fn: TFilterPossibilityFn = None,
+    nb_of_processes: int = 1,
+    begin_at_index: int = 0
 ):
     [all_params_possibilities, max_tries] = grid_optimization_setup
     all_possibilities = get_cartesian_product(all_params_possibilities)
@@ -145,7 +152,8 @@ def grid_optimize(
         data=data,
         backtest_setup=backtest_setup,
         maximize_fn=maximize_fn,
-        nb_of_processes=nb_of_processes
+        nb_of_processes=nb_of_processes,
+        begin_at_index=begin_at_index
     )
 
         
