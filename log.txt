@@ -1,0 +1,1227 @@
+------------------------------
+------------------------------
+crypto
+ADA-USDT
+------------------------------
+nb_of_optimization_windows
+21
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+180
+avg_pl
+0.15636129136472188 %
+------------------------------
+nb_of_items_positive_analyzed
+148
+avg_pl_if_positive
+0.15558555851871025 %
+------------------------------
+nb_of_items_negative_analyzed
+32
+avg_pl_if_negative
+0.1599490557775256 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+AGIX-USDT
+------------------------------
+nb_of_optimization_windows
+3
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+0
+avg_pl
+nan %
+------------------------------
+nb_of_items_positive_analyzed
+0
+avg_pl_if_positive
+nan %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+APT-USDT
+------------------------------
+nb_of_optimization_windows
+5
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+20
+avg_pl
+-0.04955442906941195 %
+------------------------------
+nb_of_items_positive_analyzed
+20
+avg_pl_if_positive
+-0.04955442906941195 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+ARB-USDT
+------------------------------
+nb_of_optimization_windows
+4
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+10
+avg_pl
+0.06178759446411097 %
+------------------------------
+nb_of_items_positive_analyzed
+10
+avg_pl_if_positive
+0.06178759446411097 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+ATOM-USDT
+------------------------------
+nb_of_optimization_windows
+17
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+140
+avg_pl
+0.3117151156655145 %
+------------------------------
+nb_of_items_positive_analyzed
+136
+avg_pl_if_positive
+0.3084776816819319 %
+------------------------------
+nb_of_items_negative_analyzed
+4
+avg_pl_if_negative
+0.42178787110732274 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+AVAX-USDT
+------------------------------
+nb_of_optimization_windows
+12
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+90
+avg_pl
+0.12392856452199325 %
+------------------------------
+nb_of_items_positive_analyzed
+87
+avg_pl_if_positive
+0.12238332186788872 %
+------------------------------
+nb_of_items_negative_analyzed
+3
+avg_pl_if_negative
+0.1687406014910238 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+AXS-USDT
+------------------------------
+nb_of_optimization_windows
+12
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+90
+avg_pl
+0.10431977570158348 %
+------------------------------
+nb_of_items_positive_analyzed
+74
+avg_pl_if_positive
+0.12264421758787371 %
+------------------------------
+nb_of_items_negative_analyzed
+16
+avg_pl_if_negative
+0.019569231977490997 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+BCH-USDT
+------------------------------
+nb_of_optimization_windows
+15
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+120
+avg_pl
+0.07981907754854613 %
+------------------------------
+nb_of_items_positive_analyzed
+100
+avg_pl_if_positive
+0.0557067160214254 %
+------------------------------
+nb_of_items_negative_analyzed
+20
+avg_pl_if_negative
+0.2003808851841497 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+BEAM-USDT
+------------------------------
+nb_of_optimization_windows
+10
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+70
+avg_pl
+0.7609487527940247 %
+------------------------------
+nb_of_items_positive_analyzed
+70
+avg_pl_if_positive
+0.7609487527940247 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+BNB-USDT
+------------------------------
+nb_of_optimization_windows
+22
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+190
+avg_pl
+0.12730424860219813 %
+------------------------------
+nb_of_items_positive_analyzed
+160
+avg_pl_if_positive
+0.12763744681493924 %
+------------------------------
+nb_of_items_negative_analyzed
+30
+avg_pl_if_negative
+0.12552719146757854 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+BTC-USDT
+------------------------------
+nb_of_optimization_windows
+23
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+200
+avg_pl
+0.06406237375905147 %
+------------------------------
+nb_of_items_positive_analyzed
+173
+avg_pl_if_positive
+0.05400502493215322 %
+------------------------------
+nb_of_items_negative_analyzed
+27
+avg_pl_if_negative
+0.12850390513139953 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+BTT-USDT
+------------------------------
+nb_of_optimization_windows
+8
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+50
+avg_pl
+0.42274539694362795 %
+------------------------------
+nb_of_items_positive_analyzed
+50
+avg_pl_if_positive
+0.42274539694362795 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+CFX-USDT
+------------------------------
+nb_of_optimization_windows
+10
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+70
+avg_pl
+0.1829954760327546 %
+------------------------------
+nb_of_items_positive_analyzed
+70
+avg_pl_if_positive
+0.1829954760327546 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+CHZ-USDT
+------------------------------
+nb_of_optimization_windows
+16
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+130
+avg_pl
+0.3228602122030269 %
+------------------------------
+nb_of_items_positive_analyzed
+130
+avg_pl_if_positive
+0.3228602122030269 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+file not found for DAI-USDT
+------------------------------
+------------------------------
+crypto
+DOGE-USDT
+------------------------------
+nb_of_optimization_windows
+17
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+140
+avg_pl
+0.2744799841088069 %
+------------------------------
+nb_of_items_positive_analyzed
+140
+avg_pl_if_positive
+0.2744799841088069 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+DOT-USDT
+------------------------------
+nb_of_optimization_windows
+13
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+100
+avg_pl
+0.14920486305905986 %
+------------------------------
+nb_of_items_positive_analyzed
+100
+avg_pl_if_positive
+0.14920486305905986 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+DYDX-USDT
+------------------------------
+nb_of_optimization_windows
+9
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+60
+avg_pl
+0.18138580903774384 %
+------------------------------
+nb_of_items_positive_analyzed
+57
+avg_pl_if_positive
+0.16119575626432614 %
+------------------------------
+nb_of_items_negative_analyzed
+3
+avg_pl_if_negative
+0.5649968117326795 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+EGLD-USDT
+------------------------------
+nb_of_optimization_windows
+12
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+90
+avg_pl
+0.20766886681493868 %
+------------------------------
+nb_of_items_positive_analyzed
+74
+avg_pl_if_positive
+0.17851543329759698 %
+------------------------------
+nb_of_items_negative_analyzed
+16
+avg_pl_if_negative
+0.34250349683264414 %
+------------------------------
+file not found for ENA-USDT
+------------------------------
+------------------------------
+crypto
+ENS-USDT
+------------------------------
+nb_of_optimization_windows
+8
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+50
+avg_pl
+0.24160057527892675 %
+------------------------------
+nb_of_items_positive_analyzed
+50
+avg_pl_if_positive
+0.24160057527892675 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+EOS-USDT
+------------------------------
+nb_of_optimization_windows
+20
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+170
+avg_pl
+0.05927301076476942 %
+------------------------------
+nb_of_items_positive_analyzed
+115
+avg_pl_if_positive
+0.06680339926030059 %
+------------------------------
+nb_of_items_negative_analyzed
+55
+avg_pl_if_negative
+0.0435276530013861 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+ETC-USDT
+------------------------------
+nb_of_optimization_windows
+20
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+170
+avg_pl
+0.11782214888385763 %
+------------------------------
+nb_of_items_positive_analyzed
+138
+avg_pl_if_positive
+0.12201142632883474 %
+------------------------------
+nb_of_items_negative_analyzed
+32
+avg_pl_if_negative
+0.09975588990239376 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+ETH-USDT
+------------------------------
+nb_of_optimization_windows
+23
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+200
+avg_pl
+0.06517292678366964 %
+------------------------------
+nb_of_items_positive_analyzed
+147
+avg_pl_if_positive
+0.07054286468465847 %
+------------------------------
+nb_of_items_negative_analyzed
+53
+avg_pl_if_negative
+0.05027894807715363 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+GALA-USDT
+------------------------------
+nb_of_optimization_windows
+9
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+60
+avg_pl
+0.08183872236110949 %
+------------------------------
+nb_of_items_positive_analyzed
+60
+avg_pl_if_positive
+0.08183872236110949 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+GNO-USDT
+------------------------------
+nb_of_optimization_windows
+9
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+60
+avg_pl
+0.16830482026541518 %
+------------------------------
+nb_of_items_positive_analyzed
+60
+avg_pl_if_positive
+0.16830482026541518 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+HBAR-USDT
+------------------------------
+nb_of_optimization_windows
+16
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+130
+avg_pl
+0.3064282083854688 %
+------------------------------
+nb_of_items_positive_analyzed
+129
+avg_pl_if_positive
+0.3080461664366725 %
+------------------------------
+nb_of_items_negative_analyzed
+1
+avg_pl_if_negative
+0.0977116197801928 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+ICP-USDT
+------------------------------
+nb_of_optimization_windows
+10
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+70
+avg_pl
+0.3427202363154317 %
+------------------------------
+nb_of_items_positive_analyzed
+70
+avg_pl_if_positive
+0.3427202363154317 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+LINK-USDT
+------------------------------
+nb_of_optimization_windows
+18
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+150
+avg_pl
+0.15505146808254874 %
+------------------------------
+nb_of_items_positive_analyzed
+119
+avg_pl_if_positive
+0.13007217194171958 %
+------------------------------
+nb_of_items_negative_analyzed
+31
+avg_pl_if_negative
+0.2509397339134733 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+LTC-USDT
+------------------------------
+nb_of_optimization_windows
+22
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+190
+avg_pl
+0.12300710905684965 %
+------------------------------
+nb_of_items_positive_analyzed
+176
+avg_pl_if_positive
+0.12000435720989268 %
+------------------------------
+nb_of_items_negative_analyzed
+14
+avg_pl_if_negative
+0.16075598941859445 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+MATIC-USDT
+------------------------------
+nb_of_optimization_windows
+17
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+140
+avg_pl
+0.32531746237558057 %
+------------------------------
+nb_of_items_positive_analyzed
+121
+avg_pl_if_positive
+0.3461106320911437 %
+------------------------------
+nb_of_items_negative_analyzed
+19
+avg_pl_if_negative
+0.1928978026080477 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+NEAR-USDT
+------------------------------
+nb_of_optimization_windows
+12
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+90
+avg_pl
+0.18724383798282307 %
+------------------------------
+nb_of_items_positive_analyzed
+89
+avg_pl_if_positive
+0.18679034636500966 %
+------------------------------
+nb_of_items_negative_analyzed
+1
+avg_pl_if_negative
+0.2276045919682128 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+NEO-USDT
+------------------------------
+nb_of_optimization_windows
+22
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+190
+avg_pl
+0.09881695085104303 %
+------------------------------
+nb_of_items_positive_analyzed
+128
+avg_pl_if_positive
+0.14455897375242932 %
+------------------------------
+nb_of_items_negative_analyzed
+62
+avg_pl_if_negative
+0.0043818067965680435 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+NEXO-USDT
+------------------------------
+nb_of_optimization_windows
+7
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+40
+avg_pl
+0.4302777582465505 %
+------------------------------
+nb_of_items_positive_analyzed
+40
+avg_pl_if_positive
+0.4302777582465505 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+file not found for ORDI-USDT
+------------------------------
+------------------------------
+crypto
+PENDLE-USDT
+------------------------------
+nb_of_optimization_windows
+3
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+0
+avg_pl
+nan %
+------------------------------
+nb_of_items_positive_analyzed
+0
+avg_pl_if_positive
+nan %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+PEPE-USDT
+------------------------------
+nb_of_optimization_windows
+3
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+0
+avg_pl
+nan %
+------------------------------
+nb_of_items_positive_analyzed
+0
+avg_pl_if_positive
+nan %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+QNT-USDT
+------------------------------
+nb_of_optimization_windows
+9
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+60
+avg_pl
+0.16873830440907964 %
+------------------------------
+nb_of_items_positive_analyzed
+60
+avg_pl_if_positive
+0.16873830440907964 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+RNDR-USDT
+------------------------------
+nb_of_optimization_windows
+7
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+40
+avg_pl
+0.44454156168681924 %
+------------------------------
+nb_of_items_positive_analyzed
+40
+avg_pl_if_positive
+0.44454156168681924 %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+SAND-USDT
+------------------------------
+nb_of_optimization_windows
+13
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+100
+avg_pl
+0.12354259630870443 %
+------------------------------
+nb_of_items_positive_analyzed
+84
+avg_pl_if_positive
+0.10920463557813564 %
+------------------------------
+nb_of_items_negative_analyzed
+16
+avg_pl_if_negative
+0.19881689014419046 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+SHIB-USDT
+------------------------------
+nb_of_optimization_windows
+10
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+70
+avg_pl
+0.40234205921921123 %
+------------------------------
+nb_of_items_positive_analyzed
+24
+avg_pl_if_positive
+0.7624781743401693 %
+------------------------------
+nb_of_items_negative_analyzed
+46
+avg_pl_if_negative
+0.2144449556778419 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+SNX-USDT
+------------------------------
+nb_of_optimization_windows
+13
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+100
+avg_pl
+0.07944057055136701 %
+------------------------------
+nb_of_items_positive_analyzed
+66
+avg_pl_if_positive
+0.09689817832625904 %
+------------------------------
+nb_of_items_negative_analyzed
+34
+avg_pl_if_negative
+0.045552273105988327 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+SOL-USDT
+------------------------------
+nb_of_optimization_windows
+13
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+100
+avg_pl
+0.15383704801986456 %
+------------------------------
+nb_of_items_positive_analyzed
+76
+avg_pl_if_positive
+0.1422196666089769 %
+------------------------------
+nb_of_items_negative_analyzed
+24
+avg_pl_if_negative
+0.19062542248767553 %
+------------------------------
+file not found for TON-USDT
+------------------------------
+------------------------------
+crypto
+TRX-USDT
+------------------------------
+nb_of_optimization_windows
+20
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+170
+avg_pl
+-0.030813303362319862 %
+------------------------------
+nb_of_items_positive_analyzed
+61
+avg_pl_if_positive
+-0.019573912901613342 %
+------------------------------
+nb_of_items_negative_analyzed
+109
+avg_pl_if_negative
+-0.037103237473357475 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+UNI-USDT
+------------------------------
+nb_of_optimization_windows
+12
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+90
+avg_pl
+0.07329980776377344 %
+------------------------------
+nb_of_items_positive_analyzed
+69
+avg_pl_if_positive
+0.014904389254339822 %
+------------------------------
+nb_of_items_negative_analyzed
+21
+avg_pl_if_negative
+0.265170468580484 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+WLD-USDT
+------------------------------
+nb_of_optimization_windows
+2
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+0
+avg_pl
+nan %
+------------------------------
+nb_of_items_positive_analyzed
+0
+avg_pl_if_positive
+nan %
+------------------------------
+nb_of_items_negative_analyzed
+0
+avg_pl_if_negative
+nan %
+------------------------------
+------------------------------
+------------------------------
+crypto
+XLM-USDT
+------------------------------
+nb_of_optimization_windows
+20
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+170
+avg_pl
+0.07516354210804965 %
+------------------------------
+nb_of_items_positive_analyzed
+134
+avg_pl_if_positive
+0.08936173696173892 %
+------------------------------
+nb_of_items_negative_analyzed
+36
+avg_pl_if_negative
+0.022314705708206223 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+XMR-USDT
+------------------------------
+nb_of_optimization_windows
+15
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+120
+avg_pl
+0.2427144863815284 %
+------------------------------
+nb_of_items_positive_analyzed
+116
+avg_pl_if_positive
+0.2438281794708442 %
+------------------------------
+nb_of_items_negative_analyzed
+4
+avg_pl_if_negative
+0.21041738679136993 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+XRP-USDT
+------------------------------
+nb_of_optimization_windows
+21
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+180
+avg_pl
+0.12248078429413457 %
+------------------------------
+nb_of_items_positive_analyzed
+157
+avg_pl_if_positive
+0.12516380570863733 %
+------------------------------
+nb_of_items_negative_analyzed
+23
+avg_pl_if_negative
+0.10416624681252866 %
+------------------------------
+------------------------------
+------------------------------
+crypto
+XTZ-USDT
+------------------------------
+nb_of_optimization_windows
+16
+------------------------------
+how_many_windows_to_analyze
+3
+------------------------------
+nb_of_items_analyzed
+130
+avg_pl
+0.22149360872366075 %
+------------------------------
+nb_of_items_positive_analyzed
+118
+avg_pl_if_positive
+0.22651724322678168 %
+------------------------------
+nb_of_items_negative_analyzed
+12
+avg_pl_if_negative
+0.17209453610963846 %
+------------------------------
+file not found for ZRO-USDT

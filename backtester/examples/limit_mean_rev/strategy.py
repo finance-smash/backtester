@@ -5,6 +5,7 @@ from numba import njit
 import talib
 import numpy as np
 from tqdm import tqdm
+from datetime import datetime, timedelta
 
 from backtester.commons import BUY_SIGNAL, NO_SIGNAL, SELL_SIGNAL, OHLCV__CLOSE,\
     TOhlcv, ORDER_TYPE__LIMIT, OFFSET__CLOSE, OFFSET__OPEN, TSide, json_dumps_numpy
@@ -15,7 +16,7 @@ from backtester.strategy import TStrategyParams, cancel_pending_order_at_index
 from backtester.order import TOrders, ORDER__SIZE
 from backtester.position import TPositionTripleArray, POSITION__SIZE
 from backtester.strategy import backtest_strategy, grid_optimize
-from backtester.strategy.backtest_strategy import TBacktestResult, make_backtest_setup_tuple
+from backtester.strategy.backtest_strategy import TBacktestResult, get_begin_at_index, make_backtest_setup_tuple
 from backtester.strategy.grid_optimize_and_test_loop import grid_optimize_and_test_loop
 from backtester.strategy.strategy import Strategy
 from backtester.bt_result_plugin import with_fees
@@ -24,6 +25,15 @@ from backtester.strategy.window_hardtest_strategy.window_hardtest_strategy impor
 COMMISSION_RATE = 0.00018
 with_fees_plugin = with_fees(COMMISSION_RATE)
 
+def get_number_of_decimals(x: float):
+    splitted = str(x).split('.')
+    if len(splitted) <= 1:
+        return 0
+    return len(splitted[1])
+
+def get_pip_size(prices: np.ndarray):
+    max_number_of_decimals = np.array([get_number_of_decimals(x) for x in prices]).max()
+    return 10.0 ** (-max_number_of_decimals)
 
 def safe_div(a, b):
     if b == 0:
@@ -37,6 +47,7 @@ BOLL_BANDS_UPPER = 3
 BOLL_BANDS_LOWER = 4
 PRICE_ABOVE_LONG_MA = 5
 PRICE_BELOW_LONG_MA = 6
+PIP_SIZE = 7
 
 PARAMS__LONG_MA_LEN = 0
 PARAMS__SHORT_MA_LEN = 1
@@ -72,7 +83,7 @@ def indicators_fn(
     price_above_long_ma = close > long_ma
     price_below_long_ma = close < long_ma
 
-    ret = np.zeros((7, len(close)))
+    ret = np.zeros((8, len(close)))
 
     ret[CLOSE] = close
     ret[LONG_MA] = long_ma
@@ -81,6 +92,9 @@ def indicators_fn(
     ret[BOLL_BANDS_LOWER] = boll_bands_lower
     ret[PRICE_ABOVE_LONG_MA] = price_above_long_ma
     ret[PRICE_BELOW_LONG_MA] = price_below_long_ma
+
+    pip_size = get_pip_size(close)
+    ret[PIP_SIZE] = pip_size
 
     return ret
 
@@ -99,6 +113,7 @@ def order_fn(
     price_above_long_ma = indicators[PRICE_ABOVE_LONG_MA]
     price_below_long_ma = indicators[PRICE_BELOW_LONG_MA]
     close = indicators[CLOSE]
+    pip_size = indicators[PIP_SIZE][0]
 
     short_ma_at_index = short_ma[index]
     bollinger_bands_upper_at_index = bollinger_bands_upper[index]
@@ -141,7 +156,7 @@ def order_fn(
 
 
     if position_long_is_open:
-        next_limit_close = max(short_ma_at_index, close_at_index + 1)
+        next_limit_close = max(short_ma_at_index, close_at_index + pip_size)
         if next_limit_close > 0:
             long_close_order_action = make_order_action_tuple(
                 relative_size=0.,
@@ -156,7 +171,7 @@ def order_fn(
 
 
     if position_short_is_open:
-        next_limit_close = min(short_ma_at_index, close_at_index - 1)
+        next_limit_close = min(short_ma_at_index, close_at_index - pip_size)
         if next_limit_close > 0:
             short_close_order_action = make_order_action_tuple(
                 relative_size=0.,
@@ -219,7 +234,7 @@ LimitMeanRevStrategy = Strategy(
     order_fn=order_fn
 )
 crypto = 'ETH-USDT'
-ohlcv = get_ohlcv_data('crypto', crypto, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data")
+ohlcv, _ = get_ohlcv_data('crypto', crypto, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data")
 
 # ohlcv = ohlcv[0:200000]
 # ohlcv = ohlcv[0:200000]
@@ -508,10 +523,64 @@ if __name__ == '__main__':
     
 
 
-    cryptos = ['BTC-USDT', 'ETH-USDT', 'SOL-USDT', 'XRP-USDT', 'DOGE-USDT', 'ADA-USDT', 'DOT-USDT', 'LINK-USDT', 'BCH-USDT', 'LTC-USDT']
+    cryptos = [
+        'ADA-USDT',
+        'AGIX-USDT',
+        'APT-USDT',
+        'ARB-USDT',
+        'ATOM-USDT',
+        'AVAX-USDT',
+        'AXS-USDT',
+        'BCH-USDT',
+        'BEAM-USDT',
+        'BNB-USDT',
+        'BTC-USDT',
+        'BTT-USDT',
+        'CFX-USDT',
+        'CHZ-USDT',
+        'DAI-USDT',
+        'DOGE-USDT',
+        'DOT-USDT',
+        'DYDX-USDT',
+        'EGLD-USDT',
+        'ENA-USDT',
+        'ENS-USDT',
+        'EOS-USDT',
+        'ETC-USDT',
+        'ETH-USDT',
+        'GALA-USDT',
+        'GNO-USDT',
+        'HBAR-USDT',
+        'ICP-USDT',
+        'LINK-USDT',
+        'LTC-USDT',
+        'MATIC-USDT',
+        'NEAR-USDT',
+        'NEO-USDT',
+        'NEXO-USDT',
+        'ORDI-USDT',
+        'PENDLE-USDT',
+        'PEPE-USDT',
+        'QNT-USDT',
+        'RNDR-USDT',
+        'SAND-USDT',
+        'SHIB-USDT',
+        'SNX-USDT',
+        'SOL-USDT',
+        'TON-USDT',
+        'TRX-USDT',
+        'UNI-USDT',
+        'WLD-USDT',
+        'XLM-USDT',
+        'XMR-USDT',
+        'XRP-USDT',
+        'XTZ-USDT',
+        'ZRO-USDT',
+    ]
     crypto_ohlcv_dict = {c: get_ohlcv_data('crypto', c, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data") for c in cryptos}
     window_size = 30000
-    crypto_nb_of_optimization_windows_dict = {c: len(crypto_ohlcv_dict[c]) // window_size for c in cryptos}
+    begin_at_index = 48000
+    crypto_nb_of_optimization_windows_dict = {c: (len(crypto_ohlcv_dict[c][0]) - begin_at_index) // window_size for c in cryptos}
 
     is_window_hardtest = False
     if is_window_hardtest:
@@ -520,17 +589,23 @@ if __name__ == '__main__':
             np.arange(20, 100, 5),
             np.arange(2, 3, 0.25),
         ]
+
         for c in cryptos:
             file_name = f'window_hardtest_results_{c}.csv'
             file_already_exists = os.path.exists(file_name)
+            nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[c]
+
+            if nb_of_optimization_windows <= 1:
+                print('nb_of_optimization_windows <= 1 for', c, "ignoring")
+                continue
+
             if file_already_exists:
                 continue
 
-            ohlcv_data = crypto_ohlcv_dict[c]
+            ohlcv_data, _ = crypto_ohlcv_dict[c]
             print('ohlcv length for', c)
             print(len(ohlcv_data))
 
-            nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[c]
             print('nb_of_optimization_windows for', c)
             print(nb_of_optimization_windows)
 
@@ -556,7 +631,7 @@ if __name__ == '__main__':
                 nb_of_test_windows=1,
                 first_optimization_window_index=0,
                 nb_of_processes=8,
-                begin_at_index=48000,
+                begin_at_index=begin_at_index,
             )
 
             df.to_csv(file_name, index=False)
@@ -567,8 +642,12 @@ if __name__ == '__main__':
 
         for crypto in cryptos:
             nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[crypto]
-            how_many_windows_to_analyze = 2
-            df = pd.read_csv(f'window_hardtest_results_{crypto}.csv', nrows=10)
+            how_many_windows_to_analyze = 1
+            try:
+                df = pd.read_csv(f'window_hardtest_results_{crypto}.csv', nrows=10)
+            except:
+                print('file not found for', crypto)
+                continue
 
             nb_of_items_analyzed = 0
             nb_of_items_positive_analyzed = 0
@@ -638,3 +717,46 @@ if __name__ == '__main__':
             print('avg_pl_if_negative')
             print(avg_pl_if_negative, '%')
             print('-'*30)
+
+
+
+    is_testing_link_crypto = False
+    if is_testing_link_crypto:
+        crypto = 'LINK-USDT'
+        ohlcv, ohlcv_gmt_times = crypto_ohlcv_dict[crypto]
+        data = ohlcv[0:window_size + 48000]
+        print('data')
+        print(data[0], data[-1])
+
+        bt_result = backtest_strategy(
+            strategy=LimitMeanRevStrategy,
+            data=ohlcv[0:10000],
+            setup=backtest_setup,
+            params=np.array([31000.0,35.0,2.25]),
+            begin_at_index=48000
+        )
+
+        time_start = time.time()
+
+        bt_result = backtest_strategy(
+            strategy=LimitMeanRevStrategy,
+            data=ohlcv[0:window_size + 48000],
+            setup=backtest_setup,
+            params=np.array([31000.0,35.0,2.25]),
+            begin_at_index=48000
+        )
+
+        time_end = time.time()
+        print('time taken', (time_end - time_start) * 1000, 'ms')
+
+        all_pls = bt_result[3]
+        print('all_pls')
+        print(all_pls)
+        print(len(all_pls))
+        all_sizes_abs = np.abs(all_pls[:, 2])
+        total_size = all_sizes_abs.sum()
+        pl_perc_mean = (all_pls[:, 1] * all_sizes_abs).sum() / total_size
+
+        print('pl_perc_mean')
+        print(pl_perc_mean * 100)
+        

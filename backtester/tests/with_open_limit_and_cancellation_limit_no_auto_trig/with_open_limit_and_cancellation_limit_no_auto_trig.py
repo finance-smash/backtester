@@ -177,7 +177,7 @@ MyStrategy = Strategy(
 
 
 class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
-    ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
+    ohlcv , _ = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:20000]
     begin_equity = 100_000_000_00
     backtest_setup = make_backtest_setup_tuple(

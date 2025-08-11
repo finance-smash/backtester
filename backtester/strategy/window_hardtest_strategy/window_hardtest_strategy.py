@@ -29,6 +29,9 @@ def window_hardtest_strategy_inner(
 
     optimization_ohlcvs = [ohlcv[(i + F)*W:(i+1+F)*W + begin_at_index] for i in range(NW)]
 
+    print('optimization_ohlcvs')
+    print(optimization_ohlcvs[0][0], optimization_ohlcvs[0][-1])
+
     grid_optim_result = grid_optimize(
         grid_optimization_setup=grid_optimization_setup,
         strategy=strategy,

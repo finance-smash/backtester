@@ -61,16 +61,26 @@ def make_backtest_setup_tuple(
     return (begin_equity, is_hedged, auto_trigger_tp_sl)
 
 
+def get_begin_at_index(
+    begin_at_date: str,
+    ohlcv_gmt_times: np.ndarray
+) -> int:
+    ret = np.searchsorted(ohlcv_gmt_times, begin_at_date, side='left')
+    if ret >= len(ohlcv_gmt_times):
+        raise ValueError(f"begin_at_date {begin_at_date} is after the last date in data")
+    return ret
+
 
 def backtest_strategy(
     strategy: Strategy,
     data: TOhlcv,
     setup: TBacktestSetup,
     params: TStrategyParams,
-    state_shape: tuple[int] = (0,)
+    state_shape: tuple[int] = (0,),
+    begin_at_index: int = 0,
 ):
     indicators = strategy.indicators_fn(data, params)
-    return backtest_strategy_loop(indicators, strategy.order_fn, data, setup, params, state_shape)
+    return backtest_strategy_loop(indicators, strategy.order_fn, data, setup, params, state_shape, begin_at_index)
 
 
 
@@ -85,6 +95,7 @@ def backtest_strategy_loop(
     begin_at_index: int = 0
 ) -> TBacktestResult:
     data_len = len(data)
+    # state_array = np.zeros((data_len, 3), dtype=np.float64) TODO implement state logic
     nb_of_orders = 0
     (equity, is_hedged_boolint, auto_trigger_tp_sl) = setup
     is_hedged = is_hedged_boolint == 1
@@ -104,7 +115,7 @@ def backtest_strategy_loop(
     )
     pending_orders.fill(np.nan)
     all_pls = np.empty((0, 5), dtype=np.float64) #[[pl, pl_perc, pl_size, pl_close_price, pl_avg_price]]
-    state = np.zeros(state_shape, dtype=np.float64)
+    state = np.zeros((data_len, *state_shape), dtype=np.float64)
     state.fill(np.nan)
 
 
@@ -124,6 +135,8 @@ def backtest_strategy_loop(
             auto_trigger_tp_sl=auto_trigger_tp_sl,
             i=i
         )
+
+        # state_array[i] = np.array([1, 2, 3], dtype=np.float64) TODO update this with state logic
 
         current_close_price = data[i, OHLCV__CLOSE]
         incoming_open_price = data[i + 1, OHLCV__OPEN]
@@ -225,7 +238,6 @@ def backtest_strategy_loop(
                 next_position_pl = (incoming_open_price - next_pos_avg_price) * next_pos_size
                 next_current_position: TPositionArray = np.array([next_pos_size, next_pos_avg_price, next_position_pl], dtype=np.float64)
                 position_triple[position_index] = next_current_position
-
 
     return (position_triple, nb_of_orders, equity, all_pls, state)
 

@@ -27,7 +27,7 @@ TMaximizeFn = Callable[[
 
 
 
-def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn):
+def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn, begin_at_index):
     """Process a single batch of possibilities"""
     batch_results = []
     for params in batch_data:
@@ -38,6 +38,7 @@ def process_batch(batch_data, strategy, data, backtest_setup, maximize_fn):
                 data=data_item,
                 setup=backtest_setup,
                 params=params,
+                begin_at_index=begin_at_index,
             )
             maximize_fn_input.append((bt_result, params))
         [to_maximize_value, maximize_fn_infos] = maximize_fn(maximize_fn_input)
@@ -65,7 +66,7 @@ def grid_optimize_inner(
         list[tuple[TBacktestResult, TStrategyParams]],
     ], tuple[float, np.ndarray]],
     nb_of_processes: int = 1,
-    begin_at_index: int = 0
+    begin_at_index: int = 0,
 ):
     nb_of_possibilities = len(all_possibilities)
     if nb_of_processes <= 1:
@@ -81,7 +82,7 @@ def grid_optimize_inner(
                     data=data_item,
                     setup=backtest_setup,
                     params=params,
-                    begin_at_index=begin_at_index
+                    begin_at_index=begin_at_index,
                 )
                 maximize_fn_input.append((bt_result, params))
             [to_maximize_value, maximize_fn_infos] = maximize_fn(maximize_fn_input)
@@ -102,7 +103,7 @@ def grid_optimize_inner(
         if remaining_batch_size > 0:
             batches.append(all_possibilities[-remaining_batch_size:])
 
-        batches_arg_list = list(map(lambda x: (x, strategy, data, backtest_setup, maximize_fn), batches))
+        batches_arg_list = list(map(lambda x: (x, strategy, data, backtest_setup, maximize_fn, begin_at_index), batches))
         print("batches_arg_list len")
         print(len(batches_arg_list))
         with Pool(nb_of_processes) as pool:
@@ -153,7 +154,7 @@ def grid_optimize(
         backtest_setup=backtest_setup,
         maximize_fn=maximize_fn,
         nb_of_processes=nb_of_processes,
-        begin_at_index=begin_at_index
+        begin_at_index=begin_at_index,
     )
 
         

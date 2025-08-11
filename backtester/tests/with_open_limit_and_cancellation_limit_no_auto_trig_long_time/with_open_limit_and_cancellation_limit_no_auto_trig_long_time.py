@@ -22,8 +22,6 @@ def indicators_fn(data: TOhlcv, params: TStrategyParams) -> np.ndarray:
     short_ma = talib.SMA(close, timeperiod=80)
     long_ma = talib.SMA(close, timeperiod=240)
     short_bollinger_bands = talib.BBANDS(close, timeperiod=80, nbdevup=2.5, nbdevdn=2.5, matype=talib.MA_Type.SMA)
-    print("short_bollinger_bands")
-    print(short_bollinger_bands)
     short_bollinger_bands_upper = short_bollinger_bands[0]
     short_bollinger_bands_middle = short_bollinger_bands[1]
     short_bollinger_bands_lower = short_bollinger_bands[2]
@@ -179,7 +177,7 @@ MyStrategy = Strategy(
 
 
 class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
-    ohlcv = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
+    ohlcv , _ = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
     ohlcv = ohlcv[0:200000]
     begin_equity = 100_000_000_00
     backtest_setup = make_backtest_setup_tuple(
