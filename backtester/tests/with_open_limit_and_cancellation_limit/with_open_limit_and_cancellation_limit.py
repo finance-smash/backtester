@@ -186,7 +186,8 @@ class WithOpenLimitAndCancellationLimit(unittest.TestCase):
     backtest_setup = make_backtest_setup_tuple(
         begin_equity=begin_equity,
         is_hedged=1,
-        auto_trigger_tp_sl=True
+        auto_trigger_tp_sl=True,
+        return_order_history=False
     )
 
     backtest_strategy(

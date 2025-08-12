@@ -110,7 +110,7 @@ class WithCancellation(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0, False),
+        setup=(begin_equity, 0, False, False),
         params=np.array([])
     )
 
@@ -119,7 +119,7 @@ class WithCancellation(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1, False),
+        setup=(begin_equity, 1, False, False),
         params=np.array([])
     )
 

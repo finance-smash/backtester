@@ -133,6 +133,11 @@ def grid_optimize(
     nb_of_processes: int = 1,
     begin_at_index: int = 0
 ):
+    return_order_history = backtest_setup[3]
+    
+    if return_order_history:
+        print("WARNING: return_order_history is True, it will slow down the grid optimization")
+
     [all_params_possibilities, max_tries] = grid_optimization_setup
     all_possibilities = get_cartesian_product(all_params_possibilities)
     if filter_possibility_fn is not None or max_tries > 0:

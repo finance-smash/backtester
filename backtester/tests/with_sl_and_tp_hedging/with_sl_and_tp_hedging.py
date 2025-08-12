@@ -80,7 +80,7 @@ class WithSlAndTpHedging(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1, False),
+        setup=(begin_equity, 1, False, False),
         params=np.array([])
     )
 
@@ -89,7 +89,7 @@ class WithSlAndTpHedging(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 1, False),
+        setup=(begin_equity, 1, False, False),
         params=np.array([])
     )
 

@@ -84,7 +84,7 @@ class BasicPositionGridOptimize(unittest.TestCase):
         ),
         strategy=MyStrategy,
         data=[ohlcv],
-        backtest_setup=(begin_equity, 0, False),
+        backtest_setup=(begin_equity, 0, False, False),
         maximize_fn=lambda x: (
             get_final_equity_from_grid_optimize_result(x),
             []
@@ -100,7 +100,7 @@ class BasicPositionGridOptimize(unittest.TestCase):
         ),
         strategy=MyStrategy,
         data=[ohlcv],
-        backtest_setup=(begin_equity, 0, False),
+        backtest_setup=(begin_equity, 0, False, False),
         maximize_fn=lambda x: (
             get_final_equity_from_grid_optimize_result(x),
             np.array([1, 2])
@@ -128,7 +128,7 @@ class BasicPositionGridOptimize(unittest.TestCase):
         ),
         strategy=MyStrategy,
         data=[ohlcv],
-        backtest_setup=(begin_equity, 0, False),
+        backtest_setup=(begin_equity, 0, False, False),
         maximize_fn=lambda x: (
             get_final_equity_from_grid_optimize_result(x),
             np.array([1, 2])
@@ -152,7 +152,7 @@ class BasicPositionGridOptimize(unittest.TestCase):
         ),
         strategy=MyStrategy,
         data=[ohlcv],
-        backtest_setup=(begin_equity, 0, False),
+        backtest_setup=(begin_equity, 0, False, False),
         maximize_fn=lambda x: (
             get_final_equity_from_grid_optimize_result(x),
             np.array([1, 2])

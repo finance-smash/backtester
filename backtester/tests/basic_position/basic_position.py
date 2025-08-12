@@ -79,7 +79,7 @@ class BasicPosition(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0, False),
+        setup=(begin_equity, 0, False, False),
         params=np.array([])
     )
 
@@ -88,7 +88,7 @@ class BasicPosition(unittest.TestCase):
     result_info = backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0, False),
+        setup=(begin_equity, 0, False, True),
         params=np.array([])
     )
 
@@ -102,6 +102,8 @@ class BasicPosition(unittest.TestCase):
     all_pls = result_info[3]
     all_pls_pl = all_pls[:, 0]
     all_pls_sum = round(np.sum(all_pls_pl), 3)
+    order_history = result_info[5]
+    print(order_history)
 
     fees = np.abs(round(all_pls_with_fees_sum - all_pls_sum, 3))
 

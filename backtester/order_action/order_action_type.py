@@ -47,3 +47,5 @@ TOrderActions = Annotated[
     TOrderActionTuple,
     Literal["N"]
 ]
+
+ORDER_ACTION__SHAPE = (len(TOrderActionKeys),)

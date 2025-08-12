@@ -1,18 +1,21 @@
 import numpy as np
 import numpy.typing as npt
 
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal
 from numba import njit # type: ignore
 
 from backtester.commons import BUY, SELL, NO_SIDE, TOhlcv, OHLCV__OPEN, OHLCV__CLOSE, OHLCV__LOW, OHLCV__HIGH, TSide, get_reverse_side, \
     MAX_NUMBER_OF_PENDING_ORDERS, MAX_NUMBER_OF_OCO_ORDERS, ORDER_TYPE__LIMIT, ORDER_TYPE__MARKET, ORDER_TYPE__STOP, OFFSET__CLOSE, \
     OFFSET__BOTH, TOffset, TBoolInt
 from backtester.commons.constants import MAX_NUMBER_OF_ORDERS_IN_HISTORY
+from backtester.commons.type_commons import TOrderType
 from backtester.order import TOrders, ORDER__SHAPE, ORDER__SIDE, ORDER__SIZE, ORDER__PRICE, ORDER__ORDER_TYPE,\
     TOrderTuple, make_order_tuple, TOrderKeys, \
     ORDER__STOP_LOSS, ORDER__TAKE_PROFIT, ORDER__OFFSET, ORDER__CANDLE_INDEX
+from backtester.order.order_type import ORDER__USER_ID
 from backtester.order_action import ORDER_ACTION__ABSOLUTE_SIZE, ORDER_ACTION__SIDE, ORDER_ACTION__PRICE, ORDER_ACTION__ORDER_TYPE, \
     ORDER_ACTION__STOP_LOSS, ORDER_ACTION__TAKE_PROFIT, TOrderAction, make_order_action, ORDER_ACTION__OFFSET
+from backtester.order_action.order_action_type import ORDER_ACTION__SHAPE, ORDER_ACTION__USER_ID, TOrderActionKeys
 from backtester.position import POSITION__AVG_PRICE, POSITION__SIZE, get_position_side, TPositionTripleArray, TPositionArray
 
 from backtester.strategy.strategy import Strategy, TStrategyParams, TOrderFn
@@ -34,23 +37,11 @@ TPendingOrderWithOcos = Annotated[
 ]
 
 
-TOrderHistoryTuple = tuple[
-    int, # candle index
-    bool, # is_oco
-    TOrderTuple, # order tuple
-]
-ORDER_HISTORY_TUPLE_SIZE = 1 + 1 + ORDER__SHAPE[1]
-
-TOrderHistory = Annotated[
-    npt.NDArray[np.float64],
-    TOrderHistoryTuple,
-    MAX_NUMBER_OF_ORDERS_IN_HISTORY
-]
-
 TBacktestSetupTuple = tuple[
     float, # cash
     TBoolInt, # is_hedged
     bool, # auto_trigger_tp_sl
+    bool, # return_order_history
 ]
 
 TBacktestSetup = TBacktestSetupTuple
@@ -60,7 +51,8 @@ TBacktestResultTuple = tuple[
     int, # number of orders
     float, # final equity
     np.ndarray, # all pls as an array of (pl, pl_perc, pl_size, pl_close_price, pl_avg_price),
-    np.ndarray # state
+    np.ndarray, # state
+    TOrders # order history
 ]
 
 TBacktestResult = TBacktestResultTuple
@@ -72,8 +64,9 @@ def make_backtest_setup_tuple(
     begin_equity: float,
     is_hedged: TBoolInt,
     auto_trigger_tp_sl: bool,
+    return_order_history: bool,
 ) -> TBacktestSetupTuple:
-    return (begin_equity, is_hedged, auto_trigger_tp_sl)
+    return (begin_equity, is_hedged, auto_trigger_tp_sl, return_order_history)
 
 
 def get_begin_at_index(
@@ -110,9 +103,16 @@ def backtest_strategy_loop(
     begin_at_index: int = 0
 ) -> TBacktestResult:
     data_len = len(data)
-    history: TOrderHistory = np.zeros((MAX_NUMBER_OF_ORDERS_IN_HISTORY, ORDER_HISTORY_TUPLE_SIZE), dtype=np.float64)
     nb_of_orders = 0
-    (equity, is_hedged_boolint, auto_trigger_tp_sl) = setup
+
+    (equity, is_hedged_boolint, auto_trigger_tp_sl, return_order_history) = setup
+
+    order_history: TOrders = (
+        np.full((2**11, ORDER__SHAPE[1]), np.nan, dtype=np.float64) 
+        if return_order_history
+        else None
+    )
+
     is_hedged = is_hedged_boolint == 1
     position_triple = np.zeros((3, 3), dtype=np.float64)
 
@@ -139,7 +139,9 @@ def backtest_strategy_loop(
             equity,
             position_triple,
             all_pls,
-            pending_orders
+            pending_orders,
+            order_history,
+            nb_of_orders
         ) = applicate_all_pending_orders(
             pending_orders=pending_orders,
             current_equity=equity,
@@ -148,7 +150,9 @@ def backtest_strategy_loop(
             data=data,
             is_hedged=is_hedged,
             auto_trigger_tp_sl=auto_trigger_tp_sl,
-            i=i
+            i=i,
+            order_history=order_history,
+            nb_of_orders=nb_of_orders
         )
 
         current_close_price = data[i, OHLCV__CLOSE]
@@ -158,7 +162,6 @@ def backtest_strategy_loop(
 
 
         if order_actions_len > 0:
-            nb_of_orders += order_actions_len
 
 
             for order_action_index in range(order_actions_len):
@@ -183,6 +186,8 @@ def backtest_strategy_loop(
 
 
                 if order_action_order_type == ORDER_TYPE__LIMIT:
+
+
                     if side == BUY and order_action_price >= current_close_price:
                         raise ValueError(f"Cannot place a buy limit order at", order_action_price, "because the last close price is", current_close_price)
                     elif side == SELL and order_action_price <= current_close_price:
@@ -209,6 +214,8 @@ def backtest_strategy_loop(
 
         
                 if order_action_order_type == ORDER_TYPE__MARKET:
+
+
                     if DEBUG:
                         print(f"Market order at index {i}")
                         print("Order side", side)
@@ -216,6 +223,8 @@ def backtest_strategy_loop(
                         print("Order take profit", order_action_take_profit)
                         print("Order size", size)
                         print("incoming open price", incoming_open_price)
+
+
                     # TO DO: check if the tp/sl can be placed, e.g in case of a long if the tp is lower than the incoming open price, it cannot be placed
                     (pending_orders, _, _) = register_take_profit_stop_loss(
                         pending_orders=pending_orders,
@@ -226,7 +235,7 @@ def backtest_strategy_loop(
                         candle_index=i
                     )
 
-                    (equity, position_triple, all_pls, pending_orders) = applicate_order(
+                    (equity, position_triple, all_pls, pending_orders, order_history, nb_of_orders) = applicate_order(
                         side=side,
                         size=size,
                         price=incoming_open_price,
@@ -235,6 +244,14 @@ def backtest_strategy_loop(
                         current_equity=equity,
                         all_pls=all_pls,
                         pending_orders=pending_orders,
+                        order_history=order_history,
+                        nb_of_orders=nb_of_orders,
+                        order_more_info=make_applicate_order_more_info(
+                            stop_loss=order_action_stop_loss,
+                            take_profit=order_action_take_profit,
+                            order_type=order_action_order_type,
+                            user_id=order_action[ORDER_ACTION__USER_ID],
+                        ),
                         offset=order_action_offset,
                         is_hedged=is_hedged,
                         i=i,
@@ -252,7 +269,7 @@ def backtest_strategy_loop(
                 next_current_position: TPositionArray = np.array([next_pos_size, next_pos_avg_price, next_position_pl], dtype=np.float64)
                 position_triple[position_index] = next_current_position
 
-    return (position_triple, nb_of_orders, equity, all_pls, state)
+    return (position_triple, nb_of_orders, equity, all_pls, state, order_history)
 
 
 
@@ -266,7 +283,9 @@ def applicate_all_pending_orders(
     is_hedged: bool,
     auto_trigger_tp_sl: bool,
     i: int,
-) -> tuple[float, TPositionTripleArray, np.ndarray, TOrders]:
+    order_history: TOrders,
+    nb_of_orders: int,
+) -> tuple[float, TPositionTripleArray, np.ndarray, TOrders, TOrders, int]:
     current_close_price = data[i, OHLCV__CLOSE]
     incoming_open_price = data[i + 1, OHLCV__OPEN]
     first_pending_order_index = -1
@@ -281,7 +300,7 @@ def applicate_all_pending_orders(
 
 
     if first_pending_order_index == -1:
-        return (current_equity, current_position_triple, current_all_pls, pending_orders)
+        return (current_equity, current_position_triple, current_all_pls, pending_orders, order_history, nb_of_orders)
     
 
     for pending_orders_index in range(first_pending_order_index, MAX_NUMBER_OF_PENDING_ORDERS):
@@ -335,6 +354,12 @@ def applicate_all_pending_orders(
         if is_triggered and DEBUG:
             print(f"{'Limit' if pending_order_type == ORDER_TYPE__LIMIT else 'Stop'} order triggered at candle index {i}", "pending order price", pending_order_price, "pending_orders_index", pending_orders_index, "ori pending order price", pending_order[ORDER__PRICE])
         
+        applicate_order_more_info = make_applicate_order_more_info(
+            stop_loss=pending_order_stop_loss,
+            take_profit=pending_order_take_profit,
+            order_type=pending_order_type,
+            user_id=pending_order[ORDER__USER_ID],
+        )
 
         if is_triggered:
             is_pending_tp_auto_triggered = False
@@ -401,7 +426,7 @@ def applicate_all_pending_orders(
 
             pending_orders = cancel_pending_order_at_index(pending_orders, pending_orders_index)
 
-            (current_equity, current_position_triple, current_all_pls, pending_orders) = applicate_order(
+            (current_equity, current_position_triple, current_all_pls, pending_orders, order_history, nb_of_orders) = applicate_order(
                 side=pending_order_side,
                 size=pending_order_size,
                 price=pending_order_price,
@@ -410,6 +435,9 @@ def applicate_all_pending_orders(
                 current_equity=current_equity,
                 all_pls=current_all_pls,
                 pending_orders=pending_orders,
+                order_history=order_history,
+                nb_of_orders=nb_of_orders,
+                order_more_info=applicate_order_more_info,
                 offset=pending_order_offset,
                 is_hedged=is_hedged,
                 i=i,
@@ -418,7 +446,7 @@ def applicate_all_pending_orders(
             if is_pending_sl_auto_triggered:
                 if DEBUG:
                     print(f"Stop loss order auto triggered at candle index {i}", "pending_order_stop_loss_price", pending_order_stop_loss, "pending_orders_index", pending_orders_index)
-                (current_equity, current_position_triple, current_all_pls, pending_orders) = applicate_order(
+                (current_equity, current_position_triple, current_all_pls, pending_orders, order_history, nb_of_orders) = applicate_order(
                     side=reverse_side,
                     size=pending_order_size,
                     price=pending_order_stop_loss,
@@ -427,6 +455,9 @@ def applicate_all_pending_orders(
                     current_equity=current_equity,
                     all_pls=current_all_pls,
                     pending_orders=pending_orders,
+                    order_history=order_history,
+                    nb_of_orders=nb_of_orders,
+                    order_more_info=applicate_order_more_info,
                     offset=OFFSET__CLOSE,
                     is_hedged=is_hedged,
                     i=i,
@@ -435,7 +466,7 @@ def applicate_all_pending_orders(
             elif is_pending_tp_auto_triggered:
                 if DEBUG:
                     print(f"Take profit order auto triggered at candle index {i}", "pending_order_take_profit_price", pending_order_take_profit, "pending_orders_index", pending_orders_index)
-                (current_equity, current_position_triple, current_all_pls, pending_orders) = applicate_order(
+                (current_equity, current_position_triple, current_all_pls, pending_orders, order_history, nb_of_orders) = applicate_order(
                     side=reverse_side,
                     size=pending_order_size,
                     price=pending_order_take_profit,
@@ -444,13 +475,16 @@ def applicate_all_pending_orders(
                     current_equity=current_equity,
                     all_pls=current_all_pls,
                     pending_orders=pending_orders,
+                    order_history=order_history,
+                    nb_of_orders=nb_of_orders,
+                    order_more_info=applicate_order_more_info,
                     offset=OFFSET__CLOSE,
                     is_hedged=is_hedged,
                     i=i,
                 )
     
 
-    return (current_equity, current_position_triple, current_all_pls, pending_orders)
+    return (current_equity, current_position_triple, current_all_pls, pending_orders, order_history, nb_of_orders)
 
 
 
@@ -491,6 +525,60 @@ def cancel_pending_offset_close_orders(
     return pending_orders
 
 
+@njit
+def resize_order_history_if_needed(order_history: TOrders, nb_of_orders: int):
+    """Resize order_history if it's full by doubling its capacity"""
+    current_capacity = order_history.shape[0]
+    
+    if nb_of_orders >= current_capacity:
+        new_capacity = max(current_capacity * 2, 2 ** 11)
+        new_order_history = np.full((new_capacity, ORDER__SHAPE[1]), np.nan, dtype=np.float64)
+        
+        if current_capacity > 0:
+            new_order_history[:current_capacity] = order_history
+        
+        return new_order_history
+    
+    return order_history
+
+
+TApplicateOrderMoreInfoKeys = {
+    "stop_loss": 0,
+    "take_profit": 1,
+    "order_type": 2,
+    "user_id": 3
+}
+
+APPLICATE_ORDER_MORE_INFO__SHAPE = (len(TApplicateOrderMoreInfoKeys),)
+
+TApplicateOrderMoreInfoTuple = tuple[
+    float, # stop_loss
+    float, # take_profit
+    TOrderType, # order_type
+    int # user_id
+]
+
+TApplicateOrderMoreInfo = Annotated[npt.NDArray[np.float64], TApplicateOrderMoreInfoTuple]
+
+@njit
+def make_applicate_order_more_info_tuple(
+    stop_loss: float = 0.0,
+    take_profit: float = 0.0,
+    order_type: TOrderType = ORDER_TYPE__LIMIT,
+    user_id: int = 0,
+) -> TApplicateOrderMoreInfoTuple:
+    return (stop_loss, take_profit, order_type, user_id)
+
+
+@njit
+def make_applicate_order_more_info(
+    stop_loss: float = 0.0,
+    take_profit: float = 0.0,
+    order_type: TOrderType = ORDER_TYPE__LIMIT,
+    user_id: int = 0,
+) -> TApplicateOrderMoreInfo:
+    return np.array(make_applicate_order_more_info_tuple(stop_loss, take_profit, order_type, user_id), dtype=np.float64)
+
 
 @njit
 def applicate_order(
@@ -502,6 +590,9 @@ def applicate_order(
     current_equity: float,
     all_pls: np.ndarray,
     pending_orders: TOrders,
+    nb_of_orders: int,
+    order_history: TOrders | None = None,
+    order_more_info: TApplicateOrderMoreInfo | None = None,
     offset: TOffset = OFFSET__BOTH,
     is_hedged: bool = False,
     i = 0,
@@ -524,7 +615,7 @@ def applicate_order(
 
     if offset == OFFSET__CLOSE and size > current_position_abs_size:
         print("Cannot close a position with a size greater than the current position size. This problem often occurs when the take profit and stop loss are triggered at the same candle.")
-        return (equity, position_triple, all_pls, pending_orders)
+        return (equity, position_triple, all_pls, pending_orders, order_history, nb_of_orders)
 
 
     current_position_avg_price = current_position[POSITION__AVG_PRICE]
@@ -536,6 +627,21 @@ def applicate_order(
     next_pos_avg_price = current_position_avg_price
     position_changed_side = current_position_side != next_pos_side
     order_same_side = side == current_position_side
+
+    if order_history is not None:
+        order_history = resize_order_history_if_needed(order_history, nb_of_orders)
+        order_more_info = order_more_info if order_more_info is not None else np.zeros((APPLICATE_ORDER_MORE_INFO__SHAPE[0],), dtype=np.float64)
+        order_history[nb_of_orders] = np.array([
+            size,
+            order_more_info[ORDER_ACTION__STOP_LOSS],
+            order_more_info[ORDER_ACTION__TAKE_PROFIT],
+            price,
+            order_more_info[ORDER_ACTION__ORDER_TYPE],
+            side,
+            offset,
+            i,
+            order_more_info[ORDER_ACTION__USER_ID],
+        ], dtype=np.float64)
 
 
     pending_orders = cancel_pending_offset_close_orders(
@@ -601,6 +707,8 @@ def applicate_order(
                 reduced_size_pl = (price - current_position_avg_price) * reduced_size_with_sign
                 reduced_size_pl_perc = ((price - current_position_avg_price) / current_position_avg_price) * current_position_side_sign
                 equity += reduced_size_pl
+
+
                 if DEBUG:
                     print("--------------------------------")
                     print(f"i", i)
@@ -611,6 +719,8 @@ def applicate_order(
                     print("next_pos_size", next_pos_size)
                     print("current_position_size", current_position_size)
                     print("--------------------------------")
+
+                    
                 all_pls = np.vstack(
                     (
                         all_pls,
@@ -630,7 +740,7 @@ def applicate_order(
 
 
     position_triple[position_index] = next_position
-    return (equity, position_triple, all_pls, pending_orders)
+    return (equity, position_triple, all_pls, pending_orders, order_history, nb_of_orders + 1)
 
 
 
