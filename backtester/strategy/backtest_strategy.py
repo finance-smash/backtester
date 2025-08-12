@@ -7,6 +7,7 @@ from numba import njit # type: ignore
 from backtester.commons import BUY, SELL, NO_SIDE, TOhlcv, OHLCV__OPEN, OHLCV__CLOSE, OHLCV__LOW, OHLCV__HIGH, TSide, get_reverse_side, \
     MAX_NUMBER_OF_PENDING_ORDERS, MAX_NUMBER_OF_OCO_ORDERS, ORDER_TYPE__LIMIT, ORDER_TYPE__MARKET, ORDER_TYPE__STOP, OFFSET__CLOSE, \
     OFFSET__BOTH, TOffset, TBoolInt
+from backtester.commons.constants import MAX_NUMBER_OF_ORDERS_IN_HISTORY
 from backtester.order import TOrders, ORDER__SHAPE, ORDER__SIDE, ORDER__SIZE, ORDER__PRICE, ORDER__ORDER_TYPE,\
     TOrderTuple, make_order_tuple, TOrderKeys, \
     ORDER__STOP_LOSS, ORDER__TAKE_PROFIT, ORDER__OFFSET, ORDER__CANDLE_INDEX
@@ -30,6 +31,20 @@ TPendingOrderWithOco = Annotated[
 TPendingOrderWithOcos = Annotated[
     TPendingOrderWithOco,
     Literal["N"]
+]
+
+
+TOrderHistoryTuple = tuple[
+    int, # candle index
+    bool, # is_oco
+    TOrderTuple, # order tuple
+]
+ORDER_HISTORY_TUPLE_SIZE = 1 + 1 + ORDER__SHAPE[1]
+
+TOrderHistory = Annotated[
+    npt.NDArray[np.float64],
+    TOrderHistoryTuple,
+    MAX_NUMBER_OF_ORDERS_IN_HISTORY
 ]
 
 TBacktestSetupTuple = tuple[
@@ -95,7 +110,7 @@ def backtest_strategy_loop(
     begin_at_index: int = 0
 ) -> TBacktestResult:
     data_len = len(data)
-    # state_array = np.zeros((data_len, 3), dtype=np.float64) TODO implement state logic
+    history: TOrderHistory = np.zeros((MAX_NUMBER_OF_ORDERS_IN_HISTORY, ORDER_HISTORY_TUPLE_SIZE), dtype=np.float64)
     nb_of_orders = 0
     (equity, is_hedged_boolint, auto_trigger_tp_sl) = setup
     is_hedged = is_hedged_boolint == 1
@@ -115,7 +130,7 @@ def backtest_strategy_loop(
     )
     pending_orders.fill(np.nan)
     all_pls = np.empty((0, 5), dtype=np.float64) #[[pl, pl_perc, pl_size, pl_close_price, pl_avg_price]]
-    state = np.zeros((data_len, *state_shape), dtype=np.float64)
+    state = np.zeros(state_shape, dtype=np.float64)
     state.fill(np.nan)
 
 
@@ -135,8 +150,6 @@ def backtest_strategy_loop(
             auto_trigger_tp_sl=auto_trigger_tp_sl,
             i=i
         )
-
-        # state_array[i] = np.array([1, 2, 3], dtype=np.float64) TODO update this with state logic
 
         current_close_price = data[i, OHLCV__CLOSE]
         incoming_open_price = data[i + 1, OHLCV__OPEN]
@@ -815,13 +828,13 @@ def get_pending_order_ocos(pending_order_with_oco: TPendingOrderWithOco):
 
 
 @njit
-def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos, from_end: bool = False):
-    pending_orders_isnans = np.isnan(pending_orders[:,0])
-    next_nan_index = np.argmax(pending_orders_isnans) if not from_end else (MAX_NUMBER_OF_PENDING_ORDERS - 1 - np.argmax(pending_orders_isnans[::-1]))
+def get_next_free_index_in_nan_array(arr: np.ndarray, max_index: int, from_end: bool = False, column_index_nan_discriminator: int = 0):
+    isnans = np.isnan(arr[:,column_index_nan_discriminator])
+    next_nan_index = np.argmax(isnans) if not from_end else (max_index - 1 - np.argmax(isnans[::-1]))
 
 
-    if next_nan_index == 0 and not np.isnan(pending_orders[0, ORDER__SIZE]):
-        raise ValueError(f"MAX_NUMBER_OF_PENDING_ORDERS is too low. Please increase it. Current value: {MAX_NUMBER_OF_PENDING_ORDERS}")
+    if next_nan_index == 0 and not np.isnan(arr[0, column_index_nan_discriminator]):
+        return -1
     
 
     return int(next_nan_index)
@@ -829,19 +842,45 @@ def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos, fro
 
 
 @njit
+def get_next_pending_order_free_index(pending_orders: TPendingOrderWithOcos, from_end: bool = False):
+    index = get_next_free_index_in_nan_array(
+        arr=pending_orders,
+        max_index=MAX_NUMBER_OF_PENDING_ORDERS,
+        from_end=from_end,
+        column_index_nan_discriminator=ORDER__SIZE
+    )
+
+
+    if index == -1:
+        raise ValueError(f"MAX_NUMBER_OF_PENDING_ORDERS is too low. Please increase it. Current value: {MAX_NUMBER_OF_PENDING_ORDERS}")
+
+
+    return index
+
+
+
+@njit
 def cancel_pending_order_at_index(pending_orders: TPendingOrderWithOcos, pending_order_index: int):
     if np.isnan(pending_order_index):
         return pending_orders
+
+
     if DEBUG:
         print(f"Cancelling pending order at index {pending_order_index}")
+
+
     pending_order = pending_orders[pending_order_index]
     pending_order_ocos = get_pending_order_ocos(pending_order).copy()
     pending_order.fill(np.nan)
+
+
     for oco_index in pending_order_ocos:
         if np.isnan(oco_index):
             break
         oco_index = int(oco_index)
         pending_orders = cancel_pending_order_at_index(pending_orders, oco_index)
+
+
     return pending_orders
 
 
@@ -850,13 +889,11 @@ def cancel_pending_order_at_index(pending_orders: TPendingOrderWithOcos, pending
 def get_position_triple_index_for_order(is_hedged: bool, order_side: TSide, order_offset: TOffset):
     position_index = 0
 
-
     if is_hedged:
         if (order_side == BUY and order_offset != OFFSET__CLOSE) or (order_side == SELL and order_offset == OFFSET__CLOSE):
             position_index = 1
         elif (order_side == SELL and order_offset != OFFSET__CLOSE) or (order_side == BUY and order_offset == OFFSET__CLOSE):
             position_index = 2
-
 
     return position_index
 

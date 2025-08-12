@@ -69,7 +69,8 @@ MyStrategy = Strategy(
     order_fn=order_fn
 )
 
-
+def get_final_equity_from_grid_optimize_result(grid_optimize_result):
+    return grid_optimize_result[0][0][2]
 
 class BasicPositionGridOptimize(unittest.TestCase):
     ohlcv , _ = get_ohlcv_data('crypto', 'BTC-USDT', '15min', "/Users/dyodio/Documents/Projects/Finance-Smash/backtester/tests/__data__")
@@ -82,9 +83,12 @@ class BasicPositionGridOptimize(unittest.TestCase):
             0
         ),
         strategy=MyStrategy,
-        data=ohlcv,
+        data=[ohlcv],
         backtest_setup=(begin_equity, 0, False),
-        maximize_fn=lambda x, y: [x[2], []]
+        maximize_fn=lambda x: (
+            get_final_equity_from_grid_optimize_result(x),
+            []
+        )
     )
 
     start_time = time.time()
@@ -95,9 +99,12 @@ class BasicPositionGridOptimize(unittest.TestCase):
             0
         ),
         strategy=MyStrategy,
-        data=ohlcv,
+        data=[ohlcv],
         backtest_setup=(begin_equity, 0, False),
-        maximize_fn=lambda x, y: [x[2], np.array([1, 2])]
+        maximize_fn=lambda x: (
+            get_final_equity_from_grid_optimize_result(x),
+            np.array([1, 2])
+        )
     )
 
     np.set_printoptions(formatter={'all':lambda x: str(x)})
@@ -120,9 +127,12 @@ class BasicPositionGridOptimize(unittest.TestCase):
             0
         ),
         strategy=MyStrategy,
-        data=ohlcv,
+        data=[ohlcv],
         backtest_setup=(begin_equity, 0, False),
-        maximize_fn=lambda x, y: [x[2], np.array([1, 2])],
+        maximize_fn=lambda x: (
+            get_final_equity_from_grid_optimize_result(x),
+            np.array([1, 2])
+        ),
         filter_possibility_fn=lambda params: params[0] != 20
     )
 
@@ -141,9 +151,12 @@ class BasicPositionGridOptimize(unittest.TestCase):
             3
         ),
         strategy=MyStrategy,
-        data=ohlcv,
+        data=[ohlcv],
         backtest_setup=(begin_equity, 0, False),
-        maximize_fn=lambda x, y: [x[2], np.array([1, 2])]
+        maximize_fn=lambda x: (
+            get_final_equity_from_grid_optimize_result(x),
+            np.array([1, 2])
+        )
     )
 
     expected_results_with_max_tries = np.array([
