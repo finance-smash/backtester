@@ -79,7 +79,7 @@ class BasicPosition(unittest.TestCase):
     backtest_strategy(
         strategy=MyStrategy,
         data=ohlcv,
-        setup=(begin_equity, 0, False, False),
+        setup=(begin_equity, 0, False, True),
         params=np.array([])
     )
 

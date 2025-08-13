@@ -4,3 +4,4 @@ __python_env__
 .mypy_cache
 data/
 log
+csvResults/

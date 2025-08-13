@@ -184,7 +184,7 @@ class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
         begin_equity=begin_equity,
         is_hedged=1,
         auto_trigger_tp_sl=True,
-        return_order_history=False
+        return_order_history=True
     )
 
     backtest_strategy(
@@ -213,6 +213,31 @@ class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
     final_equity_rounded = round(final_equity, 2)
     position_triple = result_info[0]
     all_pls = result_info[3]
+    order_history = result_info[5]
+    nb_of_orders = result_info[1]
+
+    print(f"nb_of_orders: {nb_of_orders}")
+    print(order_history)
+    # Print order_history to a CSV with column names
+    import csv
+
+    # Define the column names for the order_history array
+    order_history_col_names = [
+        "size", "stop_loss", "take_profit", "price", "order_type", "side", "offset", "candle_index", "user_id"
+    ]
+
+    # If order_history is not None and has data, write to CSV
+    if order_history is not None and hasattr(order_history, "shape") and order_history.shape[0] > 0:
+        # Remove rows that are all nan (if any)
+        valid_rows = ~np.isnan(order_history).all(axis=1)
+        order_history_valid = order_history[valid_rows]
+        csv_filename = "order_history.csv"
+        with open(csv_filename, mode="w", newline="") as csvfile:
+            writer = csv.writer(csvfile)
+            writer.writerow(order_history_col_names)
+            for row in order_history_valid:
+                writer.writerow(row)
+        print(f"Order history written to {csv_filename}")
 
     pls_from_position_triple = np.nan_to_num(position_triple[:, POSITION__PL]).sum()
     final_gain_with_last_pls = pls_from_position_triple + final_equity - begin_equity

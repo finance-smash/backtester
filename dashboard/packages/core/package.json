@@ -1,0 +1,16 @@
+{
+  "name": "@fsdb/core",
+  "version": "1.0.0",
+  "main": "./lib/esm/index.mjs",
+  "module": "./lib/esm/index.mjs",
+  "types": "lib/esm/index.d.ts",
+  "type": "module",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "clean": "rm -rf lib tsconfig.tsbuildinfo tsconfig.compat.tsbuildinfo",
+    "build": "npm run clean && rollup -c"
+  },
+  "author": "",
+  "license": "ISC",
+  "description": ""
+}

@@ -1,0 +1,23 @@
+{
+  "name": "fsdb",
+  "version": "1.0.0",
+  "description": "Finance Smash Dashboard",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "workspaces": [
+    "packages/core",
+    "packages/apps/*"
+  ],
+  "devDependencies": {
+    "@rollup/plugin-json": "^6.1.0",
+    "@rollup/plugin-node-resolve": "^16.0.1",
+    "@rollup/plugin-terser": "^0.4.4",
+    "@rollup/plugin-typescript": "^12.1.4",
+    "rollup": "^4.46.2",
+    "tslib": "^2.8.1"
+  }
+}
