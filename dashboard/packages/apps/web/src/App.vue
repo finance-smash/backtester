@@ -1,8 +1,6 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import TradingChart from './components/TradingChart.vue';
-import FileUpload from './components/FileUpload.vue';
-import ChunkControls from './components/ChunkControls.vue';
+import { TradingChart, FileUpload, ChunkControls } from './components';
 import { CSVParser } from './utils/csvParser';
 import type { ChartCandle, ParsedOrder } from './types/chart';
 import type { ChunkManager, ChunkInfo } from './utils/chunkManager';
