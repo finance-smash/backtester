@@ -20,7 +20,7 @@ from backtester.strategy.backtest_strategy import TBacktestResult, get_begin_at_
 from backtester.strategy.grid_optimize_and_test_loop import grid_optimize_and_test_loop
 from backtester.strategy.strategy import Strategy
 from backtester.bt_result_plugin import with_fees
-from backtester.strategy.window_hardtest_strategy.window_hardtest_strategy import window_hardtest_strategy_inner
+from backtester.strategy.window_hardtest_strategy.window_hardtest_strategy import window_hardtest_strategy_inner, window_hardtest_strategy
 
 COMMISSION_RATE = 0.00018
 with_fees_plugin = with_fees(COMMISSION_RATE)
@@ -286,6 +286,9 @@ def maximize_fn2(results_list: list[tuple[TBacktestResult, TStrategyParams]]):
     pl_perc_means = np.zeros(len(results_list))
     all_pls_lenghts = np.zeros(len(results_list))
     for i, (bt_result, params) in enumerate(results_list):
+        # all_pls_with_fees_res = with_fees_plugin(bt_result)
+        # all_pls_with_fees = all_pls_with_fees_res[:, 0]
+        # all_pls_pl_perc_with_fees = all_pls_with_fees_res[:, 1]
         all_pls = bt_result[3]
         all_sizes_abs = np.abs(all_pls[:, 2])
         total_size = all_sizes_abs.sum()
@@ -306,7 +309,8 @@ if __name__ == '__main__':
     backtest_setup = make_backtest_setup_tuple(
         begin_equity=begin_equity,
         is_hedged=1,
-        auto_trigger_tp_sl=True
+        auto_trigger_tp_sl=True,
+        return_order_history=False
     )
 
     is_backtesting = False
@@ -523,66 +527,69 @@ if __name__ == '__main__':
     
 
 
-    cryptos = [
-        'ADA-USDT',
-        'AGIX-USDT',
-        'APT-USDT',
-        'ARB-USDT',
-        'ATOM-USDT',
-        'AVAX-USDT',
-        'AXS-USDT',
-        'BCH-USDT',
-        'BEAM-USDT',
-        'BNB-USDT',
-        'BTC-USDT',
-        'BTT-USDT',
-        'CFX-USDT',
-        'CHZ-USDT',
-        'DAI-USDT',
-        'DOGE-USDT',
-        'DOT-USDT',
-        'DYDX-USDT',
-        'EGLD-USDT',
-        'ENA-USDT',
-        'ENS-USDT',
-        'EOS-USDT',
-        'ETC-USDT',
-        'ETH-USDT',
-        'GALA-USDT',
-        'GNO-USDT',
-        'HBAR-USDT',
-        'ICP-USDT',
-        'LINK-USDT',
-        'LTC-USDT',
-        'MATIC-USDT',
-        'NEAR-USDT',
-        'NEO-USDT',
-        'NEXO-USDT',
-        'ORDI-USDT',
-        'PENDLE-USDT',
-        'PEPE-USDT',
-        'QNT-USDT',
-        'RNDR-USDT',
-        'SAND-USDT',
-        'SHIB-USDT',
-        'SNX-USDT',
-        'SOL-USDT',
-        'TON-USDT',
-        'TRX-USDT',
-        'UNI-USDT',
-        'WLD-USDT',
-        'XLM-USDT',
-        'XMR-USDT',
-        'XRP-USDT',
-        'XTZ-USDT',
-        'ZRO-USDT',
-    ]
+    # cryptos = [
+    #     'ADA-USDT',
+    #     'AGIX-USDT',
+    #     'APT-USDT',
+    #     'ARB-USDT',
+    #     'ATOM-USDT',
+    #     'AVAX-USDT',
+    #     'AXS-USDT',
+    #     'BCH-USDT',
+    #     'BEAM-USDT',
+    #     'BNB-USDT',
+    #     'BTC-USDT',
+    #     'BTT-USDT',
+    #     'CFX-USDT',
+    #     'CHZ-USDT',
+    #     'DAI-USDT',
+    #     'DOGE-USDT',
+    #     'DOT-USDT',
+    #     'DYDX-USDT',
+    #     'EGLD-USDT',
+    #     'ENA-USDT',
+    #     'ENS-USDT',
+    #     'EOS-USDT',
+    #     'ETC-USDT',
+    #     'ETH-USDT',
+    #     'GALA-USDT',
+    #     'GNO-USDT',
+    #     'HBAR-USDT',
+    #     'ICP-USDT',
+    #     'LINK-USDT',
+    #     'LTC-USDT',
+    #     'MATIC-USDT',
+    #     'NEAR-USDT',
+    #     'NEO-USDT',
+    #     'NEXO-USDT',
+    #     'ORDI-USDT',
+    #     'PENDLE-USDT',
+    #     'PEPE-USDT',
+    #     'QNT-USDT',
+    #     'RNDR-USDT',
+    #     'SAND-USDT',
+    #     'SHIB-USDT',
+    #     'SNX-USDT',
+    #     'SOL-USDT',
+    #     'TON-USDT',
+    #     'TRX-USDT',
+    #     'UNI-USDT',
+    #     'WLD-USDT',
+    #     'XLM-USDT',
+    #     'XMR-USDT',
+    #     'XRP-USDT',
+    #     'XTZ-USDT',
+    #     'ZRO-USDT',
+    # ]
+
+    cryptos = ['DOGE-USDT']
     crypto_ohlcv_dict = {c: get_ohlcv_data('crypto', c, '5min', "/Users/dyodio/Documents/Projects/Finance-Smash/data") for c in cryptos}
     window_size = 30000
     begin_at_index = 48000
     crypto_nb_of_optimization_windows_dict = {c: (len(crypto_ohlcv_dict[c][0]) - begin_at_index) // window_size for c in cryptos}
 
-    is_window_hardtest = False
+    # Original window hardtest implementation (kept for reference)
+    is_window_hardtest = True
     if is_window_hardtest:
         all_params = [
             np.arange(24000, 48000, 1000),
@@ -637,14 +644,14 @@ if __name__ == '__main__':
             df.to_csv(file_name, index=False)
 
 
-    is_analyzing_window_hardtest = True
+    is_analyzing_window_hardtest = False
     if is_analyzing_window_hardtest:
 
         for crypto in cryptos:
             nb_of_optimization_windows = crypto_nb_of_optimization_windows_dict[crypto]
             how_many_windows_to_analyze = 1
             try:
-                df = pd.read_csv(f'window_hardtest_results_{crypto}.csv', nrows=10)
+                df = pd.read_csv(f'/Users/dyodio/Documents/Projects/Finance-Smash/csvResults/window_hardtest_results_{crypto}.csv', nrows=10)
             except:
                 print('file not found for', crypto)
                 continue

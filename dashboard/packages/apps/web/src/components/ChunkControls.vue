@@ -1,3 +1,57 @@
+<script setup lang="ts">
+interface ChunkMetadata {
+  totalChunks: number;
+  chunkSize: number;
+  totalRows: number;
+}
+
+interface Props {
+  chunkMetadata?: ChunkMetadata;
+  currentChunk?: number;
+  loading?: boolean;
+  showMemoryInfo?: boolean;
+  ordersInChunk?: number;
+}
+
+const props = withDefaults(defineProps<Props>(), {
+  currentChunk: 0,
+  loading: false,
+  showMemoryInfo: true
+});
+
+const emit = defineEmits<{
+  goToFirstChunk: [];
+  goToPreviousChunk: [];
+  goToNextChunk: [];
+  goToLastChunk: [];
+  goToChunk: [chunkIndex: number];
+  changeChunkSize: [newSize: number];
+}>();
+
+const getChunkStartRow = (): number => {
+  if (!props.chunkMetadata) return 0;
+  return props.currentChunk * props.chunkMetadata.chunkSize;
+};
+
+const getChunkEndRow = (): number => {
+  if (!props.chunkMetadata) return 0;
+  const start = getChunkStartRow();
+  return Math.min(start + props.chunkMetadata.chunkSize, props.chunkMetadata.totalRows);
+};
+
+const handleSliderChange = (event: Event) => {
+  const target = event.target as HTMLInputElement;
+  const chunkIndex = parseInt(target.value);
+  emit('goToChunk', chunkIndex);
+};
+
+const handleChunkSizeChange = (event: Event) => {
+  const target = event.target as HTMLSelectElement;
+  const newSize = parseInt(target.value);
+  emit('changeChunkSize', newSize);
+};
+</script>
+
 <template>
   <div class="chunk-controls">
     <div class="chunk-info" v-if="chunkMetadata">
@@ -111,62 +165,6 @@
     </div>
   </div>
 </template>
-
-<script setup lang="ts">
-
-
-interface ChunkMetadata {
-  totalChunks: number;
-  chunkSize: number;
-  totalRows: number;
-}
-
-interface Props {
-  chunkMetadata?: ChunkMetadata;
-  currentChunk?: number;
-  loading?: boolean;
-  showMemoryInfo?: boolean;
-  ordersInChunk?: number;
-}
-
-const props = withDefaults(defineProps<Props>(), {
-  currentChunk: 0,
-  loading: false,
-  showMemoryInfo: true
-});
-
-const emit = defineEmits<{
-  goToFirstChunk: [];
-  goToPreviousChunk: [];
-  goToNextChunk: [];
-  goToLastChunk: [];
-  goToChunk: [chunkIndex: number];
-  changeChunkSize: [newSize: number];
-}>();
-
-const getChunkStartRow = (): number => {
-  if (!props.chunkMetadata) return 0;
-  return props.currentChunk * props.chunkMetadata.chunkSize;
-};
-
-const getChunkEndRow = (): number => {
-  if (!props.chunkMetadata) return 0;
-  const start = getChunkStartRow();
-  return Math.min(start + props.chunkMetadata.chunkSize, props.chunkMetadata.totalRows);
-};
-
-const handleSliderChange = (event: Event) => {
-  const target = event.target as HTMLInputElement;
-  const chunkIndex = parseInt(target.value);
-  emit('goToChunk', chunkIndex);
-};
-
-const handleChunkSizeChange = (event: Event) => {
-  const target = event.target as HTMLSelectElement;
-  const newSize = parseInt(target.value);
-  emit('changeChunkSize', newSize);
-};
-</script>
 
 <style scoped>
 .chunk-controls {

@@ -1,40 +1,3 @@
-<template>
-  <div class="file-upload">
-    <div class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
-      <input
-        ref="fileInput"
-        type="file"
-        accept=".csv"
-        @change="handleFileSelect"
-        style="display: none"
-      />
-      
-      <div class="upload-content">
-        <div class="upload-icon">📁</div>
-        <div class="upload-text">
-          <h3>{{ title }}</h3>
-          <p>Click to browse or drag and drop a CSV file</p>
-          <p class="file-info" v-if="description">{{ description }}</p>
-        </div>
-      </div>
-      
-      <div v-if="loading" class="loading-overlay">
-        <div class="spinner"></div>
-        <p>Processing file...</p>
-      </div>
-    </div>
-    
-    <div v-if="error" class="error-message">
-      {{ error }}
-    </div>
-    
-    <div v-if="fileName" class="file-status">
-      <span class="file-name">📄 {{ fileName }}</span>
-      <button @click="clearFile" class="clear-btn">✕</button>
-    </div>
-  </div>
-</template>
-
 <script setup lang="ts">
 import { ref } from 'vue';
 
@@ -96,6 +59,43 @@ const clearFile = () => {
   emit('file-cleared');
 };
 </script>
+
+<template>
+  <div class="file-upload">
+    <div class="upload-area" @click="triggerFileInput" @dragover.prevent @drop.prevent="handleDrop">
+      <input
+        ref="fileInput"
+        type="file"
+        accept=".csv"
+        @change="handleFileSelect"
+        style="display: none"
+      />
+      
+      <div class="upload-content">
+        <div class="upload-icon">📁</div>
+        <div class="upload-text">
+          <h3>{{ title }}</h3>
+          <p>Click to browse or drag and drop a CSV file</p>
+          <p class="file-info" v-if="description">{{ description }}</p>
+        </div>
+      </div>
+      
+      <div v-if="loading" class="loading-overlay">
+        <div class="spinner"></div>
+        <p>Processing file...</p>
+      </div>
+    </div>
+    
+    <div v-if="error" class="error-message">
+      {{ error }}
+    </div>
+    
+    <div v-if="fileName" class="file-status">
+      <span class="file-name">📄 {{ fileName }}</span>
+      <button @click="clearFile" class="clear-btn">✕</button>
+    </div>
+  </div>
+</template>
 
 <style scoped>
 .file-upload {
