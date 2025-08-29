@@ -215,6 +215,7 @@ class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
     all_pls = result_info[3]
     order_history = result_info[5]
     nb_of_orders = result_info[1]
+    indicators_result = result_info[6]
 
     print(f"nb_of_orders: {nb_of_orders}")
     print(order_history)
@@ -238,6 +239,22 @@ class WithOpenLimitAndCancellationLimitNoAutoTrig(unittest.TestCase):
             for row in order_history_valid:
                 writer.writerow(row)
         print(f"Order history written to {csv_filename}")
+
+
+    indicators_col_names = [
+        "short_ma", "long_ma", "short_bollinger_bands_upper", "short_bollinger_bands_middle", "short_bollinger_bands_lower"
+    ]
+    csv_filename = "indicators.csv"
+    indicator_len = len(indicators_result[0])
+    with open(csv_filename, mode="w", newline="") as csvfile:
+        writer = csv.writer(csvfile)
+        writer.writerow(indicators_col_names)
+        for i in range(indicator_len):
+            row = []
+            for j in range(len(indicators_col_names)):
+                row.append(indicators_result[j][i])
+            writer.writerow(row)
+        print(f"Indicators written to {csv_filename}")
 
     pls_from_position_triple = np.nan_to_num(position_triple[:, POSITION__PL]).sum()
     final_gain_with_last_pls = pls_from_position_triple + final_equity - begin_equity

@@ -1,5 +1,5 @@
 import Papa from 'papaparse';
-import type { ChartCandle, ParsedOrder } from '../types/chart';
+import type { ChartCandle, ParsedOrder, ParsedIndicator } from '../types/chart';
 import { ChunkManager } from './chunkManager';
 import { parseGMTTime } from './timeUtils';
 
@@ -67,6 +67,43 @@ export class CSVParser {
             resolve(orders);
           } catch (error) {
             reject(new Error(`Failed to parse orders CSV: ${error}`));
+          }
+        },
+        error: (error: any) => {
+          reject(new Error(`CSV parsing error: ${error}`));
+        }
+      });
+    });
+  }
+
+  static parseIndicatorsCSV(csvContent: string): Promise<ParsedIndicator[]> {
+    return new Promise((resolve, reject) => {
+      Papa.parse(csvContent, {
+        header: true,
+        skipEmptyLines: true,
+        complete: (results) => {
+          try {
+            const indicators: ParsedIndicator[] = results.data.map((row: any) => {
+              const indicatorRow: ParsedIndicator = {};
+              
+              // Process each column in the row
+              Object.keys(row).forEach(indicatorName => {
+                const value = row[indicatorName];
+                // Convert 'nan' strings to null, parse numbers, keep null for empty values
+                if (value === 'nan' || value === '' || value === null || value === undefined) {
+                  indicatorRow[indicatorName] = null;
+                } else {
+                  const numValue = parseFloat(value);
+                  indicatorRow[indicatorName] = isNaN(numValue) ? null : numValue;
+                }
+              });
+              
+              return indicatorRow;
+            });
+            
+            resolve(indicators);
+          } catch (error) {
+            reject(new Error(`Failed to parse indicators CSV: ${error}`));
           }
         },
         error: (error: any) => {

@@ -269,7 +269,7 @@ def backtest_strategy_loop(
                 next_current_position: TPositionArray = np.array([next_pos_size, next_pos_avg_price, next_position_pl], dtype=np.float64)
                 position_triple[position_index] = next_current_position
 
-    return (position_triple, nb_of_orders, equity, all_pls, state, order_history)
+    return (position_triple, nb_of_orders, equity, all_pls, state, order_history, indicators)
 
 
 

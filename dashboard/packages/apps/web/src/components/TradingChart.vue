@@ -1,34 +1,63 @@
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted, watch, nextTick } from 'vue';
+import { ref, onMounted, onUnmounted, watch, nextTick, computed } from 'vue';
 import { 
   createChart, 
   type IChartApi, 
   type ISeriesApi,
   CandlestickSeries,
   HistogramSeries,
+  LineSeries,
   createSeriesMarkers,
   createTextWatermark,
   ColorType, 
   type Time, 
   type ISeriesMarkersPluginApi
 } from 'lightweight-charts';
-import type { ChartCandle, ParsedOrder, OrderMarker } from '../types/chart';
+import type { ChartCandle, ParsedOrder, OrderMarker, ParsedIndicator, IndicatorSeries } from '../types/chart';
 import { formatGMTTime } from '../utils/timeUtils';
+import { generateIndicatorColorMap } from '../utils/colorUtils';
 
 interface Props {
   candles?: ChartCandle[];
   orders?: ParsedOrder[];
+  indicators?: ParsedIndicator[];
   chunkStartIndex?: number; // Global index where this chunk starts
   chunkEndIndex?: number;   // Global index where this chunk ends
 }
 
 const props = defineProps<Props>();
 
+const validCandlesComputed = computed(() => (
+  props.candles?.filter(candle => 
+    candle.time && 
+    !isNaN(candle.time) && 
+    !isNaN(candle.open) && 
+    !isNaN(candle.high) && 
+    !isNaN(candle.low) && 
+    !isNaN(candle.close) && 
+    !isNaN(candle.volume)
+  ) || []
+));
+
+const sortedCandlesComputed = computed(() => (
+  validCandlesComputed.value.sort((a, b) => a.time - b.time)
+    .filter((candle, index, array) => {
+      // Keep only the first occurrence of each timestamp
+      return index === 0 || candle.time !== array[index - 1].time;
+    })
+))
+
+const emit = defineEmits<{
+  indicatorsLoaded: [indicators: IndicatorSeries[]];
+}>();
+
 const chartContainer = ref<HTMLDivElement>();
 let chart: IChartApi | null = null;
 let candlestickSeries: ISeriesApi<'Candlestick'> | null = null;
 let markersSeries: ISeriesMarkersPluginApi<Time> | null = null;
 let volumeSeries: ISeriesApi<'Histogram'> | null = null;
+const indicatorSeriesMap: Map<string, ISeriesApi<'Line'>> = new Map();
+const indicatorSeries = ref<IndicatorSeries[]>([]);
 
 const initChart = async () => {
   if (!chartContainer.value) return;
@@ -116,6 +145,7 @@ const initChart = async () => {
 
   await loadCandles();
   await loadOrders();
+  await loadIndicators();
 };
 
 const loadCandles = async () => {
@@ -178,23 +208,9 @@ const loadOrders = async () => {
 
   try {
     // Use the same validation and sorting logic as in loadCandles
-    const validCandles = props.candles.filter(candle => 
-      candle.time && 
-      !isNaN(candle.time) && 
-      !isNaN(candle.open) && 
-      !isNaN(candle.high) && 
-      !isNaN(candle.low) && 
-      !isNaN(candle.close) && 
-      !isNaN(candle.volume)
-    );
-    
+
     // Sort by time and remove duplicates (same as loadCandles)
-    const sortedCandles = [...validCandles]
-      .sort((a, b) => a.time - b.time)
-      .filter((candle, index, array) => {
-        // Keep only the first occurrence of each timestamp
-        return index === 0 || candle.time !== array[index - 1].time;
-      });
+    const sortedCandles = sortedCandlesComputed.value;
 
     if (sortedCandles.length === 0) {
       console.warn('No valid candle data for order markers');
@@ -318,6 +334,101 @@ const loadOrders = async () => {
   }
 };
 
+const loadIndicators = async () => {
+  if (!props.indicators || !props.candles || !chart) return;
+
+  try {
+    // Clear existing indicator series
+    indicatorSeriesMap.forEach((series, _name) => {
+      chart!.removeSeries(series);
+    });
+    indicatorSeriesMap.clear();
+    indicatorSeries.value = [];
+    
+    // Sort by time and remove duplicates (same as loadCandles)
+    const sortedCandles = sortedCandlesComputed.value;
+
+    if (sortedCandles.length === 0) {
+      console.warn('No valid candle data for indicators');
+      return;
+    }
+
+    // Get all indicator names from the first indicator row
+    const indicatorNames = props.indicators.length > 0 ? Object.keys(props.indicators[0]) : [];
+    
+    if (indicatorNames.length === 0) {
+      console.warn('No indicator columns found');
+      return;
+    }
+
+    // Generate colors for indicators
+    const colorMap = generateIndicatorColorMap(indicatorNames);
+
+    console.log(`Loading indicators: ${indicatorNames.join(', ')}`);
+
+    // Process each indicator
+    for (const indicatorName of indicatorNames) {
+      const indicatorData: Array<{ time: number; value: number }> = [];
+      
+      // Match indicators to candles
+      for (let i = 0; i < Math.min(sortedCandles.length, props.indicators.length); i++) {
+        const candle = sortedCandles[i];
+        const indicatorRow = props.indicators[i];
+        const value = indicatorRow[indicatorName];
+        
+        // Only add valid (non-null, non-NaN) values
+        if (value !== null && value !== undefined && !isNaN(value)) {
+          indicatorData.push({
+            time: candle.time,
+            value: value
+          });
+        }
+      }
+
+      // Only create series if we have data points
+      if (indicatorData.length > 0) {
+        const color = colorMap.get(indicatorName) || '#ffffff';
+        
+        // Create line series for this indicator
+        const lineSeries = chart.addSeries(LineSeries, {
+          color: color,
+          lineWidth: 2,
+          title: indicatorName,
+          priceLineVisible: false,
+          lastValueVisible: true,
+        });
+
+        // Set data for the line series
+        lineSeries.setData(indicatorData.map(point => ({
+          time: point.time as Time,
+          value: point.value
+        })));
+
+        // Store the series reference
+        indicatorSeriesMap.set(indicatorName, lineSeries);
+        
+        // Add to reactive indicator series for legend
+        indicatorSeries.value.push({
+          name: indicatorName,
+          data: indicatorData,
+          color: color
+        });
+
+        console.log(`Added indicator "${indicatorName}" with ${indicatorData.length} data points (color: ${color})`);
+      } else {
+        console.warn(`No valid data points for indicator "${indicatorName}"`);
+      }
+    }
+    
+    console.log(`Successfully loaded ${indicatorSeries.value.length} indicators`);
+    
+    // Emit the loaded indicators to parent component
+    emit('indicatorsLoaded', indicatorSeries.value);
+  } catch (error) {
+    console.error('Error loading indicators:', error);
+  }
+};
+
 const resizeChart = () => {
   if (chart && chartContainer.value) {
     const rect = chartContainer.value.getBoundingClientRect();
@@ -337,6 +448,8 @@ watch(() => props.candles, async () => {
 
 watch([() => props.orders, () => props.chunkStartIndex, () => props.chunkEndIndex], loadOrders, { deep: true });
 
+watch(() => props.indicators, loadIndicators, { deep: true });
+
 onMounted(async () => {
   await nextTick();
   await initChart();
@@ -349,6 +462,15 @@ onMounted(async () => {
 
 onUnmounted(() => {
   window.removeEventListener('resize', resizeChart);
+  
+  // Clear indicator series
+  indicatorSeriesMap.forEach((series, name) => {
+    if (chart) {
+      chart.removeSeries(series);
+    }
+  });
+  indicatorSeriesMap.clear();
+  
   if (chart) {
     chart.remove();
   }

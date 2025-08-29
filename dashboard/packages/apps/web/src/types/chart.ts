@@ -28,7 +28,18 @@ export interface OrderMarker {
   size: 'tiny' | 'small' | 'normal' | 'large';
 }
 
+export interface ParsedIndicator {
+  [indicatorName: string]: number | null; // null for 'nan' values
+}
+
+export interface IndicatorSeries {
+  name: string;
+  data: Array<{ time: number; value: number }>;
+  color: string;
+}
+
 export interface ChartData {
   candles: ChartCandle[];
   orders: ParsedOrder[];
+  indicators?: ParsedIndicator[];
 }

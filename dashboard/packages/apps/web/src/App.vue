@@ -1,14 +1,17 @@
 <script setup lang="ts">
 import { ref, computed } from 'vue';
-import { TradingChart, FileUpload, ChunkControls } from './components';
+import { TradingChart, FileUpload, ChunkControls, IndicatorLegend } from './components';
 import { CSVParser } from './utils/csvParser';
-import type { ChartCandle, ParsedOrder } from './types/chart';
+import type { ChartCandle, ParsedOrder, ParsedIndicator, IndicatorSeries } from './types/chart';
 import type { ChunkManager, ChunkInfo } from './utils/chunkManager';
 
 const candles = ref<ChartCandle[]>([]);
 const orders = ref<ParsedOrder[]>([]);
+const indicators = ref<ParsedIndicator[]>([]);
+const indicatorSeries = ref<IndicatorSeries[]>([]);
 const candlesLoading = ref(false);
 const ordersLoading = ref(false);
+const indicatorsLoading = ref(false);
 const error = ref<string>('');
 
 // Chunk-related state
@@ -82,6 +85,22 @@ const handleOrdersFile = async (file: File) => {
     error.value = `Error loading orders: ${err instanceof Error ? err.message : 'Unknown error'}`;
   } finally {
     ordersLoading.value = false;
+  }
+};
+
+const handleIndicatorsFile = async (file: File) => {
+  indicatorsLoading.value = true;
+  error.value = '';
+  
+  try {
+    const csvContent = await CSVParser.parseFile(file);
+    const parsedIndicators = await CSVParser.parseIndicatorsCSV(csvContent);
+    indicators.value = parsedIndicators;
+    console.log(`Loaded ${parsedIndicators.length} indicator rows`);
+  } catch (err) {
+    error.value = `Error loading indicators: ${err instanceof Error ? err.message : 'Unknown error'}`;
+  } finally {
+    indicatorsLoading.value = false;
   }
 };
 
@@ -164,6 +183,16 @@ const clearOrders = () => {
   orders.value = [];
   error.value = '';
 };
+
+const clearIndicators = () => {
+  indicators.value = [];
+  indicatorSeries.value = [];
+  error.value = '';
+};
+
+const handleIndicatorsLoaded = (loadedIndicators: IndicatorSeries[]) => {
+  indicatorSeries.value = loadedIndicators;
+};
 </script>
 
 <template>
@@ -191,6 +220,14 @@ const clearOrders = () => {
             @file-selected="handleOrdersFile"
             @file-cleared="clearOrders"
           />
+          
+          <FileUpload
+            title="Load Indicators Data"
+            description="CSV format: indicator columns with values or 'nan' for undefined values"
+            :loading="indicatorsLoading"
+            @file-selected="handleIndicatorsFile"
+            @file-cleared="clearIndicators"
+          />
         </div>
 
         <div v-if="error" class="error-banner">
@@ -207,7 +244,17 @@ const clearOrders = () => {
           <div class="status-item" :class="{ active: orders.length > 0 }">
             📈 Orders: {{ orders.length }} loaded
           </div>
+          <div class="status-item" :class="{ active: indicators.length > 0 }">
+            📊 Indicators: {{ indicators.length }} rows loaded
+          </div>
         </div>
+
+        <!-- Indicator Legend -->
+        <IndicatorLegend
+          v-if="indicatorSeries.length > 0"
+          :indicators="indicatorSeries"
+          @clear-indicators="clearIndicators"
+        />
 
         <!-- Chunk Controls (only shown when using chunked loading) -->
         <ChunkControls
@@ -238,9 +285,11 @@ const clearOrders = () => {
           v-else
           :candles="candles"
           :orders="orders"
+          :indicators="indicators"
           :chunk-start-index="currentChunkInfo?.startRow"
           :chunk-end-index="currentChunkInfo?.endRow"
           style="flex: 1; display: flex; flex-direction: column;"
+          @indicators-loaded="handleIndicatorsLoaded"
         />
       </div>
     </main>
