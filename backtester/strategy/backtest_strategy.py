@@ -549,6 +549,11 @@ TApplicateOrderMoreInfoKeys = {
     "user_id": 3
 }
 
+APPLICATE_ORDER_MORE_INFO__STOP_LOSS = TApplicateOrderMoreInfoKeys['stop_loss']
+APPLICATE_ORDER_MORE_INFO__TAKE_PROFIT = TApplicateOrderMoreInfoKeys['take_profit']
+APPLICATE_ORDER_MORE_INFO__ORDER_TYPE = TApplicateOrderMoreInfoKeys['order_type']
+APPLICATE_ORDER_MORE_INFO__USER_ID = TApplicateOrderMoreInfoKeys['user_id']
+
 APPLICATE_ORDER_MORE_INFO__SHAPE = (len(TApplicateOrderMoreInfoKeys),)
 
 TApplicateOrderMoreInfoTuple = tuple[
@@ -633,14 +638,14 @@ def applicate_order(
         order_more_info = order_more_info if order_more_info is not None else np.zeros((APPLICATE_ORDER_MORE_INFO__SHAPE[0],), dtype=np.float64)
         order_history[nb_of_orders] = np.array([
             size,
-            order_more_info[ORDER_ACTION__STOP_LOSS],
-            order_more_info[ORDER_ACTION__TAKE_PROFIT],
+            order_more_info[APPLICATE_ORDER_MORE_INFO__STOP_LOSS],
+            order_more_info[APPLICATE_ORDER_MORE_INFO__TAKE_PROFIT],
             price,
-            order_more_info[ORDER_ACTION__ORDER_TYPE],
+            order_more_info[APPLICATE_ORDER_MORE_INFO__ORDER_TYPE],
             side,
             offset,
             i,
-            order_more_info[ORDER_ACTION__USER_ID],
+            order_more_info[APPLICATE_ORDER_MORE_INFO__USER_ID],
         ], dtype=np.float64)
 
 

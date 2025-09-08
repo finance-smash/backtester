@@ -184,6 +184,9 @@ def window_hardtest_strategy(
             # Load OHLCV data for this crypto and timerange
             try:
                 ohlcv_data, _ = get_ohlcv_data('crypto', crypto, timerange, data_dir)
+                if ohlcv_data is None:
+                    print(f"    Skipping {crypto} {timerange}: no data found")
+                    continue
             except Exception as e:
                 print(f"    Error loading data for {crypto} {timerange}: {e}")
                 continue
@@ -206,7 +209,7 @@ def window_hardtest_strategy(
                       f"(data_length={len(ohlcv_data)})")
                 
                 # Generate filename with all parameters
-                file_name = f'window_hardtest_{crypto}_{timerange}_optwin{optimization_window}_nbwin{nb_of_optimization_windows}_beginat{begin_at_index}.csv'
+                file_name = f'window_hardtest_{crypto}_{timerange}_optwin{optimization_window}_beginat{begin_at_index}.csv'
                 file_path = os.path.join(output_dir, file_name)
                 
                 # Skip if file already exists

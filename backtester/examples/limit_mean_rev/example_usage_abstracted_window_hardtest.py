@@ -16,7 +16,7 @@ def run_example_window_hardtest():
     
     # Define strategy parameters to optimize over
     all_params = [
-        np.arange(24000, 48000, 1000),
+        np.arange(5000, 10000, 1000),
         np.arange(20, 100, 5),
         np.arange(2, 3, 0.25),
     ]
@@ -30,12 +30,13 @@ def run_example_window_hardtest():
     )
     
     # Define test parameters
-    timeranges_to_test = ('5min',)  # Test on 5min and 15min timeframes
-    optimization_window_range = [30000]  # Test window sizes of 20k and 30k
+    timeranges_to_test = ('15min',)  # Test on 5min and 15min timeframes
+    optimization_window_range = [10000]  # Test window sizes of 20k and 30k
     # Note: nb_of_optimization_windows is now calculated automatically based on data length
     
     # Select a few cryptos for demonstration (faster execution)
-    test_cryptos = ['BTC-USDT']
+    # test_cryptos = ['BTC-USDT']
+    test_cryptos = None
     
     print("Starting abstracted window hardtest example...")
     print(f"Testing on timeranges: {timeranges_to_test}")
@@ -53,10 +54,10 @@ def run_example_window_hardtest():
         grid_optimization_setup=(all_params, 0),
         filter_possibility_fn=lambda params: params[PARAMS__LONG_MA_LEN] > params[PARAMS__SHORT_MA_LEN],
         crypto_pairs=test_cryptos,
-        nb_of_processes=4,
-        begin_at_index=48000,
+        nb_of_processes=8,
+        begin_at_index=10000,
         data_dir="/Users/dyodio/Documents/Projects/Finance-Smash/data",
-        output_dir="csvResultsTest"
+        output_dir="csvResultsWithFees15mn"
     )
     
     print(f"\nCompleted! Created {len(created_files)} files:")
@@ -69,4 +70,3 @@ def run_example_window_hardtest():
 if __name__ == '__main__':
     # Uncomment the line below to run the example
     run_example_window_hardtest()
-    print("Example ready to run. Uncomment the line in main to execute.")
