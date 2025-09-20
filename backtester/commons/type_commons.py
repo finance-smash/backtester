@@ -44,3 +44,8 @@ TOffset = Literal[
     TOffsetClose,
     TOffsetBoth,
 ]
+
+TOhlcvDataDomain = Literal['crypto', 'forex']
+TOhlcvDataSymbol = str
+TOhlcvDataTimeframe = Literal['1d', '1h', '1w', '4h', '5min', '15min']
+TOhlcvDataPathTuple = tuple[TOhlcvDataDomain, TOhlcvDataSymbol, TOhlcvDataTimeframe]

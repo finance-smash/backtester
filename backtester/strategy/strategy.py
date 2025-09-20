@@ -6,7 +6,7 @@ from numba import njit # type: ignore
 
 from backtester.order import TOrders
 from backtester.order_action import TOrderActions
-from backtester.commons import TOhlcv
+from backtester.commons import TMultiOhlcv
 
 from backtester.position import TPositionTripleArray
 
@@ -14,16 +14,16 @@ from backtester.position import TPositionTripleArray
 
 TStrategyParams = npt.NDArray[np.float64]
 
-TIndicatorsFn = Callable[[TOhlcv, TStrategyParams], np.ndarray]
+TIndicatorsFn = Callable[[TMultiOhlcv, TStrategyParams], np.ndarray]
 
 TOrderFn = Callable[[
-    np.ndarray, # indicators
+    np.ndarray, # indicators for each ohlcv [ohlcv1 : [ind1, ind2, ...], ohlcv2 : [ind1, ind2, ...], ...]
     int, # index
     TStrategyParams, # params
-    TOrders, # pending_orders
-    TPositionTripleArray, # position_triple
+    npt.NDArray[TOrders], # pending_orders
+    npt.NDArray[TPositionTripleArray], # position_triple
     np.ndarray, # state
-], tuple[TOrderActions, np.ndarray]]
+], tuple[npt.NDArray[TOrderActions], np.ndarray]]
 
 TBacktestSetup = tuple[
     float, # cash

@@ -8,6 +8,7 @@ from backtester.commons import BUY, SELL, NO_SIDE, TOhlcv, OHLCV__OPEN, OHLCV__C
     MAX_NUMBER_OF_PENDING_ORDERS, MAX_NUMBER_OF_OCO_ORDERS, ORDER_TYPE__LIMIT, ORDER_TYPE__MARKET, ORDER_TYPE__STOP, OFFSET__CLOSE, \
     OFFSET__BOTH, TOffset, TBoolInt
 from backtester.commons.constants import MAX_NUMBER_OF_ORDERS_IN_HISTORY
+from backtester.commons.ohlcv_type import TMultiOhlcv
 from backtester.commons.type_commons import TOrderType
 from backtester.order import TOrders, ORDER__SHAPE, ORDER__SIDE, ORDER__SIZE, ORDER__PRICE, ORDER__ORDER_TYPE,\
     TOrderTuple, make_order_tuple, TOrderKeys, \
@@ -47,12 +48,12 @@ TBacktestSetupTuple = tuple[
 TBacktestSetup = TBacktestSetupTuple
 
 TBacktestResultTuple = tuple[
-    TPositionTripleArray, # last position triple
+    npt.NDArray[TPositionTripleArray], # last position triples
     int, # number of orders
     float, # final equity
-    np.ndarray, # all pls as an array of (pl, pl_perc, pl_size, pl_close_price, pl_avg_price),
+    np.ndarray, # all pls for each asset as an array of array of (pl, pl_perc, pl_size, pl_close_price, pl_avg_price),
     np.ndarray, # state
-    TOrders # order history
+    npt.NDArray[TOrders] # order history for each asset
 ]
 
 TBacktestResult = TBacktestResultTuple
@@ -81,7 +82,7 @@ def get_begin_at_index(
 
 def backtest_strategy(
     strategy: Strategy,
-    data: TOhlcv,
+    data: TMultiOhlcv,
     setup: TBacktestSetup,
     params: TStrategyParams,
     state_shape: tuple[int] = (0,),
@@ -96,7 +97,7 @@ def backtest_strategy(
 def backtest_strategy_loop(
     indicators: np.ndarray,
     order_fn: TOrderFn,
-    data: TOhlcv,
+    data: TMultiOhlcv,
     setup: TBacktestSetup,
     params: TStrategyParams,
     state_shape: tuple[int] = (0,),
@@ -107,32 +108,31 @@ def backtest_strategy_loop(
 
     (equity, is_hedged_boolint, auto_trigger_tp_sl, return_order_history) = setup
 
-    order_history: TOrders = (
+    order_history: npt.NDArray[TOrders] = np.array([
         np.full((2**11, ORDER__SHAPE[1]), np.nan, dtype=np.float64) 
-        if return_order_history
-        else None
-    )
+    for _ in range(len(data))]) if return_order_history else None
 
     is_hedged = is_hedged_boolint == 1
-    position_triple = np.zeros((3, 3), dtype=np.float64)
+    position_triple = np.array([np.zeros((3, 3), dtype=np.float64) for _ in range(len(data))])
 
+    for position_triple_item in position_triple:
+        if is_hedged:
+            position_triple_item[0].fill(np.nan)
+        else:
+            position_triple_item[1].fill(np.nan)
+            position_triple_item[2].fill(np.nan)
 
-    if is_hedged:
-        position_triple[0].fill(np.nan)
-    else:
-        position_triple[1].fill(np.nan)
-        position_triple[2].fill(np.nan)
-
-
-    pending_orders: TPendingOrderWithOcos = np.empty(
+    pending_orders: npt.NDArray[TPendingOrderWithOcos] = np.array([np.empty(
         (MAX_NUMBER_OF_PENDING_ORDERS, ORDER__SHAPE[1] + MAX_NUMBER_OF_OCO_ORDERS),
         dtype=np.float64
-    )
-    pending_orders.fill(np.nan)
-    all_pls = np.empty((0, 5), dtype=np.float64) #[[pl, pl_perc, pl_size, pl_close_price, pl_avg_price]]
+    ) for _ in range(len(data))])
+
+    for pending_orders_item in pending_orders:
+        pending_orders_item.fill(np.nan)
+
+    all_pls = np.array([np.empty((0, 5), dtype=np.float64) for _ in range(len(data))]) #[[pl, pl_perc, pl_size, pl_close_price, pl_avg_price], [pl, pl_perc, pl_size, pl_close_price, pl_avg_price], ...]
     state = np.zeros(state_shape, dtype=np.float64)
     state.fill(np.nan)
-
 
     for i in range(begin_at_index, data_len - 1):
         (

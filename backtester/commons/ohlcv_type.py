@@ -28,3 +28,7 @@ TOhlcvTuple = tuple[
 ]
 
 TOhlcv = Annotated[npt.NDArray[np.float64], TOhlcvTuple]
+
+TMultiOhlcv = npt.NDArray[TOhlcv] # all olhcvs are intended to be parrallel in time
+# i.e if X is a TMultiOhlcv, X[0][0] is at the same time as X[1][0]. 
+# If no candle is available, the candle is none or with a close at 0
